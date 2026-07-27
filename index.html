@@ -1473,6 +1473,14 @@
     .dh-chk-info { border-style:dashed; }
     .dh-hc-note  { font-size:0.73rem; color:var(--muted); margin-top:6px; line-height:1.5; }
     .dh-hc-err   { color:var(--danger); font-size:0.8rem; padding:10px 12px; background:var(--danger-dim); border:1px solid rgba(255,82,82,0.22); border-radius:var(--radius); }
+    .dh-hc-fallback { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
+    .dh-hc-fallback > summary { font-size:0.78rem; color:var(--muted); cursor:pointer; -webkit-tap-highlight-color:transparent; list-style:none; }
+    .dh-hc-fallback > summary::-webkit-details-marker { display:none; }
+    .dh-hc-fallback > summary::before { content:'▸ '; color:var(--accent); }
+    .dh-hc-fallback[open] > summary::before { content:'▾ '; }
+    .dh-hc-checking { display:flex; align-items:center; gap:9px; font-size:0.82rem; color:var(--muted); padding:10px 0; }
+    .dh-spinner { width:16px; height:16px; border:2px solid var(--border-hi); border-top-color:var(--accent); border-radius:50%; animation:dhspin 0.7s linear infinite; flex-shrink:0; }
+    @keyframes dhspin { to { transform:rotate(360deg); } }
     .dh-hc-saverow { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
     .dh-save-status { font-size:0.78rem; color:var(--muted); }
     .dh-save-status.suc { color:var(--accent); font-weight:700; }
@@ -1584,21 +1592,27 @@
       Open SBC LNS Portal
     </a>
 
-    <!-- ── Health Check (paste-based, login-only) ── -->
+    <!-- ── Health Check (automatic via dashboard API, login-only) ── -->
     <div id="dh-hc-card">
       <div class="dh-hc-title">🩺 Device Health Check</div>
       <div class="dh-hc-crit">Pass rules: battery <b>= 100%</b> · GNSS position <b>&lt; 3 h</b> · WiFi position <b>&lt; 3 h</b>. Firmware is shown for reference.</div>
-      <ol class="dh-hc-steps">
-        <li>Tap <strong>Open Truvami Dashboard</strong> above and sign in if needed.</li>
-        <li>On the device page: <strong>Select All</strong> → <strong>Copy</strong>.</li>
-        <li>Return here, paste below, then tap <strong>Run Check</strong>.</li>
-      </ol>
-      <textarea id="dh-hc-input" placeholder="Paste the whole device page here…"></textarea>
       <div class="dh-hc-actions">
-        <button class="btn-p" id="dh-hc-run" onclick="dhRunHealthCheck()">Run Check</button>
+        <button class="btn-p" id="dh-hc-run" onclick="dhRunAuto()">▶︎ Run Check</button>
         <button class="btn-s" id="dh-hc-clear" onclick="dhClearHealthCheck()">Clear</button>
       </div>
       <div id="dh-hc-result"></div>
+      <details class="dh-hc-fallback" id="dh-hc-fallback">
+        <summary>Manual paste (if the automatic check can’t reach the dashboard)</summary>
+        <ol class="dh-hc-steps">
+          <li>Tap <strong>Open Truvami Dashboard</strong> above and sign in if needed.</li>
+          <li>On the device page: <strong>Select All</strong> → <strong>Copy</strong>.</li>
+          <li>Return here, paste below, then tap <strong>Parse pasted page</strong>.</li>
+        </ol>
+        <textarea id="dh-hc-input" placeholder="Paste the whole device page here…"></textarea>
+        <div class="dh-hc-actions">
+          <button class="btn-s" onclick="dhRunHealthCheck()">Parse pasted page</button>
+        </div>
+      </details>
     </div>
 
     <!-- ── Result: BLE Beacon MAC ── -->
@@ -5233,71 +5247,144 @@ window.ebLoadConfig = ebLoadConfig;
     var wOK = (latestW != null) && (wAge <= MAX_AGE_MS);
     var overall = batOK && gOK && wOK;
 
-    var html = '';
-    html += '<div class="dh-verdict '+(overall?'ok':'ko')+'">'+
-            '<span class="dh-verdict-badge">'+(overall?'OK':'KO')+'</span>'+
-            '<span class="dh-verdict-sub">'+(overall
-               ? 'All checks passed.'
-               : 'One or more checks failed — see below.')+'</span></div>';
-
-    // Battery
-    html += chkRow(batOK, 'Battery = 100%',
+    var rows = '';
+    rows += chkRow(batOK, 'Battery = 100%',
       (p.battery==null ? 'not found' : p.battery + '%') + (batOK ? '' : '  (required 100%)'));
-
-    // GNSS
-    html += chkRow(gOK, 'GNSS position < 3 h',
+    rows += chkRow(gOK, 'GNSS position < 3 h',
       latestG ? (latestG.ts + '  ·  ' + fmtAge(gAge)) : 'no GNSS/GPS position found');
-
-    // WiFi
-    html += chkRow(wOK, 'WiFi position < 3 h',
+    rows += chkRow(wOK, 'WiFi position < 3 h',
       latestW ? (latestW.ts + '  ·  ' + fmtAge(wAge)) : 'no WiFi position found');
+    rows += chkRow(true, 'Firmware version (info)', p.fw || 'not found', true);
 
-    // FW (info only)
-    html += chkRow(true, 'Firmware version (info)', p.fw || 'not found', true);
-
-    // context notes
     var notes = [];
     if(p.name) notes.push('Device: ' + p.name);
     if(p.deveui){
       var exp = window.__dhExpectedDevEui;
-      if(exp && exp !== p.deveui){
-        notes.push('⚠ Pasted DevEUI ' + p.deveui + ' does not match the scanned ' + exp + ' — did you copy the right device page?');
-      } else {
-        notes.push('DevEUI: ' + p.deveui);
-      }
+      if(exp && exp !== p.deveui) notes.push('⚠ Pasted DevEUI ' + p.deveui + ' does not match the scanned ' + exp + ' — did you copy the right device page?');
+      else notes.push('DevEUI: ' + p.deveui);
     }
     if(!latestG && p.positions.length){
       notes.push('All ' + p.positions.length + ' recent positions are non-GNSS (e.g. WiFi). If GNSS isn’t expected on this hardware, the GNSS rule may not apply.');
     }
-    notes.push('Checked ' + now.toLocaleString() + ' (device time).');
-    html += '<div class="dh-hc-note">' + notes.map(esc).join('<br>') + '</div>';
+    notes.push('Checked ' + now.toLocaleString() + ' (device time, from pasted page).');
 
-    // Stash result so the audit log can save it
-    window.__dhLastCheck = {
+    finishRender(out, overall, rows, notes, {
       deveui:     p.deveui || window.__dhExpectedDevEui || null,
       deviceName: p.name || null,
       firmware:   p.fw || null,
       hardware:   p.hw || null,
-      battery:    p.battery,
-      batOK:      batOK,
-      gnssTs:     latestG ? latestG.ts : null,
-      gnssAgeMs:  gAge,
-      gOK:        gOK,
-      wifiTs:     latestW ? latestW.ts : null,
-      wifiAgeMs:  wAge,
-      wOK:        wOK,
-      overall:    overall,
-      checkedAt:  now.toISOString()
-    };
-
-    // Save-to-audit-log control
-    html += '<div class="dh-hc-saverow">' +
-            '<button class="btn-p" onclick="dhSaveRecord(this)">💾 Save to Audit Log</button>' +
-            '<span id="dh-save-status" class="dh-save-status"></span></div>';
-
-    out.innerHTML = html;
-    out.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      battery:    p.battery, batOK: batOK,
+      gnssTs:     latestG ? latestG.ts : null, gnssAgeMs: gAge, gOK: gOK,
+      wifiTs:     latestW ? latestW.ts : null, wifiAgeMs: wAge, wOK: wOK,
+      overall:    overall, checkedAt: now.toISOString(), source: 'paste'
+    });
   };
+
+  /* ---------- shared result renderer ---------- */
+  function finishRender(out, overall, rowsHtml, notes, record){
+    var html = '<div class="dh-verdict '+(overall?'ok':'ko')+'">'+
+      '<span class="dh-verdict-badge">'+(overall?'OK':'KO')+'</span>'+
+      '<span class="dh-verdict-sub">'+(overall?'All checks passed.':'One or more checks failed — see below.')+'</span></div>';
+    html += rowsHtml;
+    html += '<div class="dh-hc-note">' + notes.map(esc).join('<br>') + '</div>';
+    html += '<div class="dh-hc-saverow">' +
+      '<button class="btn-p" onclick="dhSaveRecord(this)">💾 Save to Audit Log</button>' +
+      '<span id="dh-save-status" class="dh-save-status"></span></div>';
+    window.__dhLastCheck = record;
+    out.innerHTML = html;
+    try { out.scrollIntoView({ behavior:'smooth', block:'nearest' }); } catch(e){}
+  }
+
+  /* ---------- AUTOMATIC check via same-origin dashboard proxy ---------- */
+  var API_BASE = '/api/proxy/v1';   // relative → uses the login cookie of whatever origin serves this app
+
+  window.dhRunAuto = function(){
+    var out = document.getElementById('dh-hc-result');
+    if(!out) return;
+    var eui = window.__dhExpectedDevEui;
+    if(!eui){ out.innerHTML = '<div class="dh-hc-err">Scan or enter a DevEUI first.</div>'; return; }
+
+    out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Checking ' + esc(eui) + ' via the dashboard…</div>';
+    window.__dhLastCheck = null;
+
+    var now  = new Date();
+    var toIso   = new Date(now.getTime() + 60000).toISOString();
+    var fromIso = new Date(now.getTime() - 30*24*3600*1000).toISOString();
+    var base = API_BASE + '/devices/' + encodeURIComponent(eui);
+    function posUrl(src){
+      return base + '/positions?page=1&limit=1&from=' + fromIso + '&to=' + toIso +
+             '&sources=' + src + '&sort=' + encodeURIComponent('capturedAt:desc');
+    }
+    function getJson(url){
+      return fetch(url, { credentials:'include', headers:{ 'Accept':'application/json' } })
+        .then(function(r){ return { ok:r.ok, status:r.status, json: r.ok ? r.json() : null }; });
+    }
+
+    Promise.all([
+      getJson(base),
+      getJson(base + '/battery-history?limit=1000&from=' + fromIso + '&to=' + toIso + '&type=percentage&bucketFill=true'),
+      getJson(posUrl('gnss_active,gnss_passive')),
+      getJson(posUrl('wifi_google,wifi_here'))
+    ]).then(function(reps){
+      var authFail = reps.some(function(r){ return r.status === 401 || r.status === 403; });
+      var anyOk    = reps.some(function(r){ return r.ok; });
+      if(authFail || !anyOk) return dhAutoFallback(out, authFail ? 'auth' : 'net');
+
+      return Promise.all(reps.map(function(r){ return r.json ? r.json.catch(function(){return null;}) : null; }))
+        .then(function(bodies){
+          var dev = bodies[0] && bodies[0].data ? bodies[0].data : {};
+          var batArr = (bodies[1] && bodies[1].data) || [];
+          var gArr = (bodies[2] && bodies[2].data) || [];
+          var wArr = (bodies[3] && bodies[3].data) || [];
+
+          var battery=null, bts=null;
+          batArr.forEach(function(x){
+            if(x && typeof x.percentage==='number' && (!bts || new Date(x.timestamp) > new Date(bts))){ bts=x.timestamp; battery=x.percentage; }
+          });
+          var gTs = gArr[0] ? gArr[0].capturedAt : null;
+          var wTs = wArr[0] ? wArr[0].capturedAt : null;
+
+          var nn = new Date();
+          var gAge = gTs ? (nn - new Date(gTs)) : null;
+          var wAge = wTs ? (nn - new Date(wTs)) : null;
+          var batOK = (battery === BATTERY_PASS);
+          var gOK = (gTs != null) && (gAge <= MAX_AGE_MS);
+          var wOK = (wTs != null) && (wAge <= MAX_AGE_MS);
+          var overall = batOK && gOK && wOK;
+
+          var rows = '';
+          rows += chkRow(batOK, 'Battery = 100%', (battery==null?'not found':battery+'%') + (batOK?'':'  (required 100%)'));
+          rows += chkRow(gOK, 'GNSS position < 3 h', gTs ? (new Date(gTs).toLocaleString() + '  ·  ' + fmtAge(gAge)) : 'no GNSS position on record');
+          rows += chkRow(wOK, 'WiFi position < 3 h', wTs ? (new Date(wTs).toLocaleString() + '  ·  ' + fmtAge(wAge)) : 'no WiFi position on record');
+          rows += chkRow(true, 'Firmware version (info)', dev.firmwareVersion || 'not found', true);
+
+          var notes = [];
+          if(dev.label) notes.push('Device: ' + dev.label + (dev.deviceType ? (' (' + dev.deviceType + ')') : ''));
+          notes.push('DevEUI: ' + eui);
+          if(!gTs) notes.push('No GNSS fix on record. If this hardware is WiFi-only, the GNSS rule may not apply.');
+          notes.push('Checked ' + nn.toLocaleString() + ' · live from dashboard API.');
+
+          finishRender(out, overall, rows, notes, {
+            deveui: eui, deviceName: dev.label || null,
+            firmware: dev.firmwareVersion || null, hardware: dev.hardwareVersion || null,
+            battery: battery, batOK: batOK,
+            gnssTs: gTs, gnssAgeMs: gAge, gOK: gOK,
+            wifiTs: wTs, wifiAgeMs: wAge, wOK: wOK,
+            overall: overall, checkedAt: nn.toISOString(), source: 'api'
+          });
+        });
+    }).catch(function(){ dhAutoFallback(out, 'net'); });
+  };
+
+  function dhAutoFallback(out, reason){
+    var msg = (reason === 'auth')
+      ? 'Your dashboard session has expired. Open the Truvami Dashboard button above, sign in again, then retry — or use manual paste below.'
+      : 'Couldn’t reach the dashboard automatically. This works only when the app is opened from the <b>dashboard.truvami.com</b> domain and you’re logged in. Use manual paste below.';
+    out.innerHTML = '<div class="dh-hc-err">' + msg + '</div>';
+    window.__dhLastCheck = null;
+    var det = document.getElementById('dh-hc-fallback');
+    if(det) det.open = true;
+  }
 
   window.dhClearHealthCheck = function(){
     var ta = document.getElementById('dh-hc-input');
