@@ -1287,6 +1287,32 @@
     <p>Scan the QR code or barcode on any Truvami device. For LoRaWAN devices the <strong>DevEUI</strong> is detected and dashboard links appear. For BLE Beacons the <strong>serial number</strong> is converted to a MAC address.</p>
   </div>
 
+  <!-- ── EOL session bar (operator / station / work order) ── -->
+  <div id="dh-session" class="dh-session">
+    <div class="dh-session-head" onclick="dhToggleSession()">
+      <span class="dh-session-title">🏭 End-of-Line Session</span>
+      <span class="dh-session-summary" id="dh-session-summary">Tap to set operator &amp; station</span>
+      <span class="dh-session-chev" id="dh-session-chev">▾</span>
+    </div>
+    <div class="dh-session-body" id="dh-session-body">
+      <div class="dh-session-grid">
+        <div class="field">
+          <label for="eol-operator">Operator ID</label>
+          <input type="text" id="eol-operator" placeholder="e.g. J. Dupont" oninput="dhSaveSession()">
+        </div>
+        <div class="field">
+          <label for="eol-station">Station / Line ID</label>
+          <input type="text" id="eol-station" placeholder="e.g. EOL-2" oninput="dhSaveSession()">
+        </div>
+        <div class="field">
+          <label for="eol-workorder">Work order / Batch</label>
+          <input type="text" id="eol-workorder" placeholder="e.g. WO-10482" oninput="dhSaveSession()">
+        </div>
+      </div>
+      <div class="dh-session-note">Stored on this device and attached to every saved result. Remembered until you change it.</div>
+    </div>
+  </div>
+
   <style>
     #dh-scanner-wrap {
       display: flex; flex-direction: column; align-items: center;
@@ -1414,6 +1440,77 @@
     #dh-beacon-copy-status.vis { opacity:1; }
     #dh-beacon-copy-status.suc { color:var(--success); }
     #dh-beacon-copy-status.err { color:var(--danger); }
+
+    /* ── HEALTH CHECK (paste-based) ── */
+    #dh-hc-card { display:none; width:100%; text-align:left;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 15px; }
+    #dh-hc-card.show { display:block; }
+    .dh-hc-title { font-size:0.9rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .dh-hc-crit { font-size:0.74rem; color:var(--muted); margin-bottom:10px; line-height:1.5; }
+    .dh-hc-crit b { color:var(--accent); }
+    .dh-hc-steps { margin:0 0 11px 0; padding-left:18px; font-size:0.78rem; color:var(--muted); line-height:1.7; }
+    .dh-hc-steps strong { color:var(--text); }
+    #dh-hc-input { width:100%; min-height:70px; font-family:var(--mono); font-size:0.78rem; }
+    .dh-hc-actions { display:flex; gap:8px; margin-top:10px; }
+    #dh-hc-result { margin-top:12px; }
+    /* verdict banner */
+    .dh-verdict { display:flex; align-items:center; gap:12px; border-radius:var(--radius-lg); padding:14px 16px; margin-bottom:12px; border:1px solid; }
+    .dh-verdict-badge { font-size:1.15rem; font-weight:800; letter-spacing:0.08em; padding:6px 16px; border-radius:999px; flex-shrink:0; }
+    .dh-verdict-sub { font-size:0.78rem; line-height:1.4; }
+    .dh-verdict.ok  { background:var(--accent-dim); border-color:var(--accent-glow); }
+    .dh-verdict.ok  .dh-verdict-badge { background:var(--accent); color:#000; }
+    .dh-verdict.ok  .dh-verdict-sub { color:var(--accent); }
+    .dh-verdict.ko  { background:var(--danger-dim); border-color:rgba(255,82,82,0.3); }
+    .dh-verdict.ko  .dh-verdict-badge { background:var(--danger); color:#fff; }
+    .dh-verdict.ko  .dh-verdict-sub { color:var(--danger); }
+    /* check rows */
+    .dh-chk { display:flex; align-items:flex-start; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); margin-bottom:7px; }
+    .dh-chk-ico { font-size:1rem; line-height:1.4; flex-shrink:0; }
+    .dh-chk-ico.ok { color:var(--accent); } .dh-chk-ico.ko { color:var(--danger); }
+    .dh-chk-body { flex:1; min-width:0; }
+    .dh-chk-name { font-size:0.8rem; font-weight:700; color:var(--text); }
+    .dh-chk-val  { font-size:0.75rem; color:var(--muted); font-family:var(--mono); margin-top:2px; word-break:break-word; }
+    .dh-chk-info { border-style:dashed; }
+    .dh-hc-note  { font-size:0.73rem; color:var(--muted); margin-top:6px; line-height:1.5; }
+    .dh-hc-err   { color:var(--danger); font-size:0.8rem; padding:10px 12px; background:var(--danger-dim); border:1px solid rgba(255,82,82,0.22); border-radius:var(--radius); }
+    .dh-hc-saverow { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    .dh-save-status { font-size:0.78rem; color:var(--muted); }
+    .dh-save-status.suc { color:var(--accent); font-weight:700; }
+    .dh-save-status.err { color:var(--danger); font-weight:700; }
+
+    /* ── EOL SESSION BAR ── */
+    .dh-session { max-width:520px; margin:0 auto 16px; background:var(--surface); border:1px solid var(--border-hi); border-radius:var(--radius-lg); overflow:hidden; }
+    .dh-session-head { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    .dh-session-title { font-size:0.82rem; font-weight:700; color:var(--text); white-space:nowrap; }
+    .dh-session-summary { flex:1; font-size:0.76rem; color:var(--muted); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); }
+    .dh-session-chev { color:var(--accent); font-size:0.85rem; transition:transform 0.2s; flex-shrink:0; }
+    .dh-session.collapsed .dh-session-chev { transform:rotate(-90deg); }
+    .dh-session-body { padding:0 14px 14px; }
+    .dh-session.collapsed .dh-session-body { display:none; }
+    .dh-session-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .dh-session-note { font-size:0.72rem; color:var(--muted); margin-top:9px; line-height:1.5; }
+
+    /* ── AUDIT LOG ── */
+    .dh-audit-card { max-width:520px; margin:8px auto 0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:15px; }
+    .dh-audit-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .dh-audit-title { font-size:0.9rem; font-weight:700; color:var(--text); }
+    .dh-audit-counts { font-size:0.74rem; font-family:var(--mono); color:var(--muted); text-align:right; }
+    .dh-audit-counts b.ok { color:var(--accent); } .dh-audit-counts b.ko { color:var(--danger); }
+    .dh-audit-search { width:100%; margin-bottom:10px; font-size:0.82rem; }
+    .dh-audit-list { display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .dh-audit-empty { font-size:0.78rem; color:var(--muted); text-align:center; padding:16px 0; }
+    .dh-rec { display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); }
+    .dh-rec-badge { font-size:0.66rem; font-weight:800; letter-spacing:0.05em; padding:3px 8px; border-radius:999px; flex-shrink:0; }
+    .dh-rec-badge.ok { background:var(--accent); color:#000; } .dh-rec-badge.ko { background:var(--danger); color:#fff; }
+    .dh-rec-main { flex:1; min-width:0; }
+    .dh-rec-eui { font-family:var(--mono); font-size:0.8rem; font-weight:700; color:var(--text); word-break:break-all; }
+    .dh-rec-meta { font-size:0.7rem; color:var(--muted); margin-top:2px; }
+    .dh-rec-seq { font-family:var(--mono); font-size:0.68rem; color:var(--muted); flex-shrink:0; }
+    .dh-audit-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    .dh-audit-foot { font-size:0.71rem; color:var(--muted); margin-top:10px; line-height:1.5; }
+    @media (max-width: 768px) {
+      .dh-session-grid { grid-template-columns:1fr; gap:8px; }
+    }
   </style>
 
   <div id="dh-scanner-wrap">
@@ -1486,6 +1583,23 @@
       </svg>
       Open SBC LNS Portal
     </a>
+
+    <!-- ── Health Check (paste-based, login-only) ── -->
+    <div id="dh-hc-card">
+      <div class="dh-hc-title">🩺 Device Health Check</div>
+      <div class="dh-hc-crit">Pass rules: battery <b>= 100%</b> · GNSS position <b>&lt; 3 h</b> · WiFi position <b>&lt; 3 h</b>. Firmware is shown for reference.</div>
+      <ol class="dh-hc-steps">
+        <li>Tap <strong>Open Truvami Dashboard</strong> above and sign in if needed.</li>
+        <li>On the device page: <strong>Select All</strong> → <strong>Copy</strong>.</li>
+        <li>Return here, paste below, then tap <strong>Run Check</strong>.</li>
+      </ol>
+      <textarea id="dh-hc-input" placeholder="Paste the whole device page here…"></textarea>
+      <div class="dh-hc-actions">
+        <button class="btn-p" id="dh-hc-run" onclick="dhRunHealthCheck()">Run Check</button>
+        <button class="btn-s" id="dh-hc-clear" onclick="dhClearHealthCheck()">Clear</button>
+      </div>
+      <div id="dh-hc-result"></div>
+    </div>
 
     <!-- ── Result: BLE Beacon MAC ── -->
     <div id="dh-beacon-display">
@@ -1578,6 +1692,23 @@
     </div>
 
   </div><!-- /#dh-scanner-wrap -->
+
+  <!-- ── Audit Log ── -->
+  <div id="dh-audit" class="dh-audit-card">
+    <div class="dh-audit-head">
+      <div class="dh-audit-title">📋 Audit Log</div>
+      <div class="dh-audit-counts" id="dh-audit-counts">No records yet</div>
+    </div>
+    <input type="text" id="dh-audit-search" class="dh-audit-search"
+           placeholder="Filter by DevEUI, operator, station, work order…" oninput="dhRenderLog()">
+    <div id="dh-audit-list" class="dh-audit-list"></div>
+    <div class="dh-audit-actions">
+      <button class="btn-p" onclick="dhExportCsv(false)">⬇︎ Export CSV</button>
+      <button class="btn-s" onclick="dhExportCsv(true)">Export failures only</button>
+      <button class="btn-d" onclick="dhClearLog()">Clear log…</button>
+    </div>
+    <div class="dh-audit-foot">Records are stored only on this device (IndexedDB). Export regularly and keep the CSV as your master record — clearing the app or deleting the PWA erases the log.</div>
+  </div>
 
 </div><!-- /#panel-health -->
 
@@ -4757,7 +4888,7 @@ window.ebLoadConfig = ebLoadConfig;
     // Hide DevEUI result, show beacon result
     const devEuiDisp = document.getElementById('dh-deveui-display');
     if (devEuiDisp) devEuiDisp.classList.remove('show');
-    ['dh-open-btn','dh-dashboard-btn','dh-lns-btn'].forEach(function(id) {
+    ['dh-open-btn','dh-dashboard-btn','dh-lns-btn','dh-hc-card'].forEach(function(id) {
       var el = document.getElementById(id); if (el) el.classList.remove('show');
     });
     document.getElementById('dh-beacon-sn').textContent  = digits;
@@ -4790,6 +4921,9 @@ window.ebLoadConfig = ebLoadConfig;
     if (dashBtn) { dashBtn.href = DASHBOARD_BASE + encodeURIComponent(clean); dashBtn.classList.add('show'); }
     const lnsBtn = document.getElementById('dh-lns-btn');
     if (lnsBtn) { lnsBtn.href = LNS_BASE + encodeURIComponent(clean) + '%20&tabId=list'; lnsBtn.classList.add('show'); }
+
+    const hcCard = document.getElementById('dh-hc-card');
+    if (hcCard) { hcCard.classList.add('show'); window.__dhExpectedDevEui = clean; }
 
     setStatus('DevEUI detected — tap a button below to open the dashboard.');
     return true;
@@ -4984,6 +5118,434 @@ window.ebLoadConfig = ebLoadConfig;
     else              { dhStartScan(); }
   };
 
+})();
+</script>
+
+<!-- ══════════ DEVICE HEALTH CHECK (paste-based, login-only) ══════════ -->
+<script>
+(function () {
+  'use strict';
+
+  var MAX_AGE_MS   = 3 * 3600 * 1000;   // 3 hours
+  var BATTERY_PASS = 100;               // percent
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  // "DD.MM.YYYY HH:MM[:SS]" -> Date (device local time, same tz the dashboard displays)
+  function parseTs(ts){
+    var m = String(ts).match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if(!m) return null;
+    return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0));
+  }
+  function classify(src){
+    if(/gps|gnss/i.test(src)) return 'GNSS';
+    if(/wi-?fi/i.test(src))   return 'WiFi';
+    if(/ble|bluetooth/i.test(src)) return 'BLE';
+    return 'Other';
+  }
+  function fmtAge(ms){
+    if(ms==null) return '—';
+    if(ms < 0) ms = 0;
+    var mins = Math.round(ms/60000);
+    if(mins < 60) return mins + ' min ago';
+    var h = Math.floor(mins/60), mm = mins%60;
+    return h + 'h ' + mm + 'm ago';
+  }
+
+  function parseDashboard(raw){
+    // normalise non-breaking spaces + collapse whitespace
+    var flat = String(raw||'').replace(/ /g,' ').replace(/\s+/g,' ').trim();
+
+    var battery = null, m;
+    m = flat.match(/(\d{1,3})\s*%\s*Firmware version/i);
+    if(m) battery = parseInt(m[1],10);
+    // fallback: first standalone percentage in the header area
+    if(battery==null){ m = flat.match(/\b(\d{1,3})\s*%/); if(m) battery = parseInt(m[1],10); }
+
+    var fw = null;
+    m = flat.match(/Firmware version\s+([^\s]+)/i);
+    if(m && m[1] && m[1] !== '-') fw = m[1];
+
+    var hw = null;
+    m = flat.match(/Hardware version\s+([^\s]+)/i);
+    if(m && m[1] && m[1] !== '-') hw = m[1];
+
+    var deveui = null;
+    m = flat.match(/\b([0-9A-Fa-f]{16})\b/);
+    if(m) deveui = m[1].toUpperCase();
+
+    var name = null;
+    m = flat.match(/Back to Trackers\s+[\d.]+\s*-\s*[\d.]+\s+([^\s]+)/i);
+    if(m) name = m[1];
+
+    // Positions table rows: Timestamp ReceivedAt Delay Lat Lon Alt Moving Source
+    var rowRe = /(\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2})(?::\d{2})?\s+\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}(?::\d{2})?\s+\d+\s*s\s+[\d.]+\s+[\d.]+\s+\S+\s+\S+\s+(Wi-?Fi(?:\s?\([^)]*\))?|GPS|GNSS|BLE|Bluetooth)/gi;
+    var positions = [], r;
+    while((r = rowRe.exec(flat)) !== null){ positions.push({ ts:r[1], source:r[2] }); }
+
+    // fallback: "Last position DD.MM.YYYY HH:MM" (source unknown)
+    var lastPos = null;
+    m = flat.match(/Last position\s+(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2})/i);
+    if(m) lastPos = m[1];
+
+    return { battery:battery, fw:fw, hw:hw, deveui:deveui, name:name, positions:positions, lastPos:lastPos };
+  }
+
+  function chkRow(ok, name, val, info){
+    var cls = info ? 'dh-chk dh-chk-info' : 'dh-chk';
+    var ico = info ? '<span class="dh-chk-ico" style="color:var(--muted)">•</span>'
+                   : '<span class="dh-chk-ico ' + (ok?'ok':'ko') + '">' + (ok?'✓':'✗') + '</span>';
+    return '<div class="'+cls+'">'+ico+
+           '<div class="dh-chk-body"><div class="dh-chk-name">'+esc(name)+'</div>'+
+           '<div class="dh-chk-val">'+esc(val)+'</div></div></div>';
+  }
+
+  window.dhRunHealthCheck = function(){
+    var out = document.getElementById('dh-hc-result');
+    var ta  = document.getElementById('dh-hc-input');
+    if(!out || !ta) return;
+    var raw = ta.value || '';
+    if(raw.trim().length < 20){
+      out.innerHTML = '<div class="dh-hc-err">Please paste the device page first (Select All → Copy on the dashboard).</div>';
+      return;
+    }
+
+    var p = parseDashboard(raw);
+    if(p.battery==null && p.positions.length===0){
+      out.innerHTML = '<div class="dh-hc-err">Couldn’t read the page. Make sure you copied the whole device page from dashboard.truvami.com (including the positions table).</div>';
+      return;
+    }
+
+    var now = new Date();
+    var latestG=null, latestW=null;
+    p.positions.forEach(function(pos){
+      var d = parseTs(pos.ts); if(!d) return;
+      var k = classify(pos.source);
+      if(k==='GNSS' && (!latestG || d>latestG.d)) latestG={d:d, ts:pos.ts};
+      if(k==='WiFi' && (!latestW || d>latestW.d)) latestW={d:d, ts:pos.ts};
+    });
+
+    var batOK = (p.battery === BATTERY_PASS);
+    var gAge = latestG ? (now - latestG.d) : null;
+    var wAge = latestW ? (now - latestW.d) : null;
+    var gOK = (latestG != null) && (gAge <= MAX_AGE_MS);
+    var wOK = (latestW != null) && (wAge <= MAX_AGE_MS);
+    var overall = batOK && gOK && wOK;
+
+    var html = '';
+    html += '<div class="dh-verdict '+(overall?'ok':'ko')+'">'+
+            '<span class="dh-verdict-badge">'+(overall?'OK':'KO')+'</span>'+
+            '<span class="dh-verdict-sub">'+(overall
+               ? 'All checks passed.'
+               : 'One or more checks failed — see below.')+'</span></div>';
+
+    // Battery
+    html += chkRow(batOK, 'Battery = 100%',
+      (p.battery==null ? 'not found' : p.battery + '%') + (batOK ? '' : '  (required 100%)'));
+
+    // GNSS
+    html += chkRow(gOK, 'GNSS position < 3 h',
+      latestG ? (latestG.ts + '  ·  ' + fmtAge(gAge)) : 'no GNSS/GPS position found');
+
+    // WiFi
+    html += chkRow(wOK, 'WiFi position < 3 h',
+      latestW ? (latestW.ts + '  ·  ' + fmtAge(wAge)) : 'no WiFi position found');
+
+    // FW (info only)
+    html += chkRow(true, 'Firmware version (info)', p.fw || 'not found', true);
+
+    // context notes
+    var notes = [];
+    if(p.name) notes.push('Device: ' + p.name);
+    if(p.deveui){
+      var exp = window.__dhExpectedDevEui;
+      if(exp && exp !== p.deveui){
+        notes.push('⚠ Pasted DevEUI ' + p.deveui + ' does not match the scanned ' + exp + ' — did you copy the right device page?');
+      } else {
+        notes.push('DevEUI: ' + p.deveui);
+      }
+    }
+    if(!latestG && p.positions.length){
+      notes.push('All ' + p.positions.length + ' recent positions are non-GNSS (e.g. WiFi). If GNSS isn’t expected on this hardware, the GNSS rule may not apply.');
+    }
+    notes.push('Checked ' + now.toLocaleString() + ' (device time).');
+    html += '<div class="dh-hc-note">' + notes.map(esc).join('<br>') + '</div>';
+
+    // Stash result so the audit log can save it
+    window.__dhLastCheck = {
+      deveui:     p.deveui || window.__dhExpectedDevEui || null,
+      deviceName: p.name || null,
+      firmware:   p.fw || null,
+      hardware:   p.hw || null,
+      battery:    p.battery,
+      batOK:      batOK,
+      gnssTs:     latestG ? latestG.ts : null,
+      gnssAgeMs:  gAge,
+      gOK:        gOK,
+      wifiTs:     latestW ? latestW.ts : null,
+      wifiAgeMs:  wAge,
+      wOK:        wOK,
+      overall:    overall,
+      checkedAt:  now.toISOString()
+    };
+
+    // Save-to-audit-log control
+    html += '<div class="dh-hc-saverow">' +
+            '<button class="btn-p" onclick="dhSaveRecord(this)">💾 Save to Audit Log</button>' +
+            '<span id="dh-save-status" class="dh-save-status"></span></div>';
+
+    out.innerHTML = html;
+    out.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  };
+
+  window.dhClearHealthCheck = function(){
+    var ta = document.getElementById('dh-hc-input');
+    var out = document.getElementById('dh-hc-result');
+    if(ta) ta.value='';
+    if(out) out.innerHTML='';
+    window.__dhLastCheck = null;
+  };
+})();
+</script>
+
+<!-- ══════════ EOL AUDIT LOG (on-device, CSV export) ══════════ -->
+<script>
+(function () {
+  'use strict';
+
+  var APP_VERSION = 'EOL-1.0';
+  var DB_NAME  = 'truvami-eol';
+  var STORE    = 'audit';
+  var SEQ_KEY  = 'truvami_eol_seq';
+  var SESSION_KEYS = { op:'truvami_eol_operator', st:'truvami_eol_station', wo:'truvami_eol_workorder' };
+
+  /* ---------- storage: IndexedDB with localStorage fallback ---------- */
+  var _db = null, _idbOK = ('indexedDB' in window);
+
+  function openDb(){
+    return new Promise(function(res, rej){
+      if(!_idbOK) return rej('no-idb');
+      if(_db) return res(_db);
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath:'id' });
+      };
+      req.onsuccess = function(e){ _db = e.target.result; res(_db); };
+      req.onerror   = function(){ _idbOK = false; rej(req.error); };
+    });
+  }
+  function lsAll(){ try { return JSON.parse(localStorage.getItem('truvami_eol_records')||'[]'); } catch(e){ return []; } }
+  function lsWrite(a){ localStorage.setItem('truvami_eol_records', JSON.stringify(a)); }
+
+  function addRecord(rec){
+    return openDb().then(function(db){
+      return new Promise(function(res, rej){
+        var tx = db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).add(rec);
+        tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+      });
+    }).catch(function(){ var a=lsAll(); a.push(rec); lsWrite(a); });
+  }
+  function getAll(){
+    return openDb().then(function(db){
+      return new Promise(function(res, rej){
+        var out=[], cur=db.transaction(STORE,'readonly').objectStore(STORE).openCursor();
+        cur.onsuccess = function(e){ var c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out); };
+        cur.onerror = function(){ rej(cur.error); };
+      });
+    }).catch(function(){ return lsAll(); });
+  }
+  function clearAll(){
+    return openDb().then(function(db){
+      return new Promise(function(res, rej){
+        var tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear();
+        tx.oncomplete=res; tx.onerror=function(){ rej(tx.error); };
+      });
+    }).catch(function(){ lsWrite([]); });
+  }
+
+  function uuid(){
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+      var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); });
+  }
+  function nextSeq(){ var n=(parseInt(localStorage.getItem(SEQ_KEY),10)||0)+1; localStorage.setItem(SEQ_KEY,String(n)); return n; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ---------- session ---------- */
+  window.dhSaveSession = function(){
+    var g=function(id){ var el=document.getElementById(id); return el?el.value.trim():''; };
+    localStorage.setItem(SESSION_KEYS.op, g('eol-operator'));
+    localStorage.setItem(SESSION_KEYS.st, g('eol-station'));
+    localStorage.setItem(SESSION_KEYS.wo, g('eol-workorder'));
+    updateSessionSummary();
+  };
+  function getSession(){
+    return {
+      operator:  localStorage.getItem(SESSION_KEYS.op) || '',
+      station:   localStorage.getItem(SESSION_KEYS.st) || '',
+      workOrder: localStorage.getItem(SESSION_KEYS.wo) || ''
+    };
+  }
+  function updateSessionSummary(){
+    var s=getSession(), el=document.getElementById('dh-session-summary');
+    if(!el) return;
+    var parts=[]; if(s.operator) parts.push(s.operator); if(s.station) parts.push(s.station); if(s.workOrder) parts.push(s.workOrder);
+    el.textContent = parts.length ? parts.join(' · ') : 'Tap to set operator & station';
+  }
+  window.dhToggleSession = function(){
+    var el=document.getElementById('dh-session');
+    if(el){ el.classList.toggle('collapsed');
+      localStorage.setItem('truvami_eol_session_collapsed', el.classList.contains('collapsed')?'1':'0'); }
+  };
+
+  /* ---------- age helper ---------- */
+  function ageMin(ms){ return (ms==null) ? '' : Math.max(0, Math.round(ms/60000)); }
+
+  /* ---------- save a result ---------- */
+  window.dhSaveRecord = function(btn){
+    var status=document.getElementById('dh-save-status');
+    var c=window.__dhLastCheck;
+    function setStatus(msg, cls){ if(status){ status.textContent=msg; status.className='dh-save-status '+(cls||''); } }
+    if(!c){ setStatus('Run a check first.', 'err'); return; }
+    if(c._saved){ setStatus('Already saved (#'+c._seq+').'); return; }
+
+    // Reserve synchronously so rapid double-taps can't create duplicates
+    c._saved = true;
+    if(btn) btn.disabled = true;
+
+    var s=getSession();
+    var rec={
+      id: uuid(),
+      seq: nextSeq(),
+      savedAt: new Date().toISOString(),
+      checkedAt: c.checkedAt,
+      operator: s.operator, station: s.station, workOrder: s.workOrder,
+      deviceName: c.deviceName, deveui: c.deveui,
+      firmware: c.firmware, hardware: c.hardware,
+      battery: c.battery, batteryPass: !!c.batOK,
+      gnssTs: c.gnssTs, gnssAgeMin: ageMin(c.gnssAgeMs), gnssPass: !!c.gOK,
+      wifiTs: c.wifiTs, wifiAgeMin: ageMin(c.wifiAgeMs), wifiPass: !!c.wOK,
+      overall: c.overall ? 'OK' : 'KO',
+      appVersion: APP_VERSION
+    };
+    c._seq = rec.seq;
+    addRecord(rec).then(function(){
+      setStatus('Saved as #'+rec.seq+' ('+rec.overall+').', 'suc');
+      renderLog();
+    }).catch(function(){
+      c._saved = false; if(btn) btn.disabled = false;
+      setStatus('Save failed — storage unavailable.', 'err');
+    });
+  };
+
+  /* ---------- render log ---------- */
+  function matchesFilter(r, q){
+    if(!q) return true; q=q.toLowerCase();
+    return [r.deveui,r.operator,r.station,r.workOrder,r.overall,r.deviceName]
+      .some(function(v){ return String(v||'').toLowerCase().indexOf(q)>=0; });
+  }
+  function fmtLocal(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return iso||''; } }
+
+  window.dhRenderLog = function(){ renderLog(); };
+  function renderLog(){
+    var listEl=document.getElementById('dh-audit-list');
+    var cntEl=document.getElementById('dh-audit-counts');
+    if(!listEl) return;
+    var q=(document.getElementById('dh-audit-search')||{}).value||'';
+    getAll().then(function(all){
+      all.sort(function(a,b){ return (b.seq||0)-(a.seq||0); });
+      var ok=all.filter(function(r){return r.overall==='OK';}).length;
+      var ko=all.length-ok;
+      if(cntEl){
+        cntEl.innerHTML = all.length
+          ? all.length+' total · <b class="ok">'+ok+' OK</b> · <b class="ko">'+ko+' KO</b>'
+          : 'No records yet';
+      }
+      var rows=all.filter(function(r){ return matchesFilter(r,q); });
+      if(!rows.length){ listEl.innerHTML='<div class="dh-audit-empty">'+(all.length?'No matches.':'Saved results will appear here.')+'</div>'; return; }
+      listEl.innerHTML = rows.slice(0,200).map(function(r){
+        var meta=[]; if(r.operator) meta.push(r.operator); if(r.station) meta.push(r.station);
+        if(r.workOrder) meta.push(r.workOrder); meta.push(fmtLocal(r.savedAt));
+        return '<div class="dh-rec">'+
+          '<span class="dh-rec-badge '+(r.overall==='OK'?'ok':'ko')+'">'+r.overall+'</span>'+
+          '<div class="dh-rec-main"><div class="dh-rec-eui">'+esc(r.deveui||r.deviceName||'—')+'</div>'+
+          '<div class="dh-rec-meta">'+esc(meta.join(' · '))+'</div></div>'+
+          '<span class="dh-rec-seq">#'+r.seq+'</span></div>';
+      }).join('') + (rows.length>200 ? '<div class="dh-audit-empty">Showing latest 200 of '+rows.length+' — export CSV for all.</div>' : '');
+    });
+  }
+
+  /* ---------- CSV export ---------- */
+  var CSV_COLS=[
+    ['seq','Seq'],['savedAt','Saved At (ISO)'],['checkedAt','Checked At (ISO)'],
+    ['operator','Operator'],['station','Station'],['workOrder','Work Order'],
+    ['deviceName','Device Name'],['deveui','DevEUI'],['firmware','Firmware'],['hardware','Hardware'],
+    ['battery','Battery %'],['batteryPass','Battery Pass'],
+    ['gnssTs','GNSS Timestamp'],['gnssAgeMin','GNSS Age (min)'],['gnssPass','GNSS Pass'],
+    ['wifiTs','WiFi Timestamp'],['wifiAgeMin','WiFi Age (min)'],['wifiPass','WiFi Pass'],
+    ['overall','Result'],['appVersion','App Version']
+  ];
+  function csvCell(v){ v=(v==null?'':String(v)); return '"'+v.replace(/"/g,'""')+'"'; }
+  function buildCsv(rows){
+    var out=[CSV_COLS.map(function(c){ return csvCell(c[1]); }).join(',')];
+    rows.forEach(function(r){ out.push(CSV_COLS.map(function(c){ return csvCell(r[c[0]]); }).join(',')); });
+    return '﻿'+out.join('\r\n');   // BOM for Excel
+  }
+  function ts2(){ var d=new Date(),p=function(n){return String(n).padStart(2,'0');};
+    return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes()); }
+  function deliver(text, fname){
+    var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+    try{
+      var file=new File([blob],fname,{type:'text/csv'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:fname}).catch(function(){ anchor(blob,fname); });
+        return;
+      }
+    }catch(e){}
+    anchor(blob,fname);
+  }
+  function anchor(blob,fname){
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=fname; document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1500);
+  }
+  window.dhExportCsv = function(failuresOnly){
+    getAll().then(function(all){
+      all.sort(function(a,b){ return (a.seq||0)-(b.seq||0); });
+      var rows = failuresOnly ? all.filter(function(r){ return r.overall==='KO'; }) : all;
+      if(!rows.length){ alert(failuresOnly ? 'No failures to export.' : 'No records to export yet.'); return; }
+      deliver(buildCsv(rows), 'truvami_eol_audit_'+ts2()+(failuresOnly?'_failures':'')+'.csv');
+    });
+  };
+
+  /* ---------- clear ---------- */
+  window.dhClearLog = function(){
+    getAll().then(function(all){
+      if(!all.length){ alert('Log is already empty.'); return; }
+      if(!confirm('Clear all '+all.length+' audit records from this device?\n\nExport a CSV first — this cannot be undone.')) return;
+      if(!confirm('Are you sure? This permanently erases the on-device log.')) return;
+      clearAll().then(function(){ renderLog(); alert('Audit log cleared.'); });
+    });
+  };
+
+  /* ---------- init ---------- */
+  function init(){
+    var s=getSession();
+    var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v; };
+    set('eol-operator', s.operator); set('eol-station', s.station); set('eol-workorder', s.workOrder);
+    updateSessionSummary();
+    var sess=document.getElementById('dh-session');
+    if(sess){
+      var collapsed = localStorage.getItem('truvami_eol_session_collapsed');
+      if(collapsed==='1' || (collapsed===null && (s.operator||s.station))) sess.classList.add('collapsed');
+    }
+    renderLog();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
 </script>
 </body>
