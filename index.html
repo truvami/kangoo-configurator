@@ -1608,6 +1608,7 @@
       <div class="dh-key-row">
         <span id="dh-key-state" class="dh-key-state">No API key saved</span>
         <button class="dh-key-link" onclick="dhPromptApiKey(true)">Change key</button>
+        <button class="dh-key-link" onclick="dhPromptApiBase()">Endpoint</button>
       </div>
     </div>
 
@@ -5138,8 +5139,9 @@ window.ebLoadConfig = ebLoadConfig;
 
   /* Public truvami API — auth via the X-Api-Key header.
      The key is entered once and stored on this device only. */
-  var API_BASE     = 'https://api.truvami.com/v1';
+  var API_DEFAULT  = 'https://api.truvami.com/v1';
   var KEY_STORE    = 'truvami_api_key';
+  var BASE_STORE   = 'truvami_api_base';
   var MAX_AGE_MS   = 3 * 3600 * 1000;   // 3 hours
   var BATTERY_PASS = 100;               // percent
   var LOOKBACK_MS  = 30 * 24 * 3600 * 1000;
@@ -5162,12 +5164,35 @@ window.ebLoadConfig = ebLoadConfig;
   function setKey(k){ try { localStorage.setItem(KEY_STORE, k); } catch(e){} refreshKeyState(); }
   function maskKey(k){ return !k ? '' : (k.length<=12 ? k.slice(0,4)+'…' : k.slice(0,9)+'…'+k.slice(-4)); }
 
+  /* API base: direct truvami API, or a proxy you host (solves browser CORS) */
+  function getBase(){
+    var b = '';
+    try { b = localStorage.getItem(BASE_STORE) || ''; } catch(e){}
+    return (b || API_DEFAULT).replace(/\/+$/, '');
+  }
+  function isProxy(){ return getBase() !== API_DEFAULT; }
+
+  window.dhPromptApiBase = function(){
+    var cur = getBase();
+    var v = window.prompt(
+      'API endpoint base URL\n\n' +
+      'Default (works when this app is hosted on a truvami origin):\n' + API_DEFAULT + '\n\n' +
+      'Or paste your own proxy base URL (e.g. https://truvami-eol.<you>.workers.dev/v1)\n' +
+      'to run from any origin. Leave blank to reset to default.', cur);
+    if(v === null) return;
+    v = v.trim().replace(/\/+$/, '');
+    try { localStorage.setItem(BASE_STORE, v); } catch(e){}
+    refreshKeyState();
+  };
+
   function refreshKeyState(){
     var el = document.getElementById('dh-key-state');
     if(!el) return;
     var k = getKey();
-    el.textContent = k ? ('API key: ' + maskKey(k)) : 'No API key saved';
-    el.className = 'dh-key-state' + (k ? ' ok' : '');
+    var txt = (k ? ('key ' + maskKey(k)) : 'no API key');
+    txt += ' · ' + (isProxy() ? 'proxy endpoint' : 'direct API');
+    el.textContent = txt;
+    el.className = 'dh-key-state' + (k || isProxy() ? ' ok' : '');
   }
 
   window.dhPromptApiKey = function(force){
@@ -5245,17 +5270,22 @@ window.ebLoadConfig = ebLoadConfig;
     var eui = window.__dhExpectedDevEui;
     if(!eui){ showErr(out, 'Scan or enter a DevEUI first.'); return; }
 
+    // A proxy endpoint may hold the key server-side, so only require a key in direct mode
     var key = getKey();
-    if(!key) key = window.dhPromptApiKey(false);
-    if(!key){ showErr(out, 'An API key is required.', 'Tap “Change key” below to enter it.'); return; }
+    if(!key && !isProxy()) key = window.dhPromptApiKey(false);
+    if(!key && !isProxy()){
+      showErr(out, 'An API key is required.', 'Tap “Change key” to enter it, or “Endpoint” to use a proxy that holds the key.');
+      return;
+    }
 
     out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Querying truvami API for ' + esc(eui) + '…</div>';
     window.__dhLastCheck = null;
 
     var toIso   = new Date(Date.now() + 60000).toISOString();
     var fromIso = new Date(Date.now() - LOOKBACK_MS).toISOString();
-    var base    = API_BASE + '/devices/' + encodeURIComponent(eui);
-    var H       = { 'X-Api-Key': key, 'Accept': 'application/json' };
+    var base    = getBase() + '/devices/' + encodeURIComponent(eui);
+    var H       = { 'Accept': 'application/json' };
+    if(key) H['X-Api-Key'] = key;
 
     function posUrl(src){
       return base + '/positions?page=1&limit=1&from=' + fromIso + '&to=' + toIso +
@@ -5279,9 +5309,13 @@ window.ebLoadConfig = ebLoadConfig;
       var devR=res[0], batR=res[1], gR=res[2], wR=res[3];
 
       if(res.every(function(r){ return r.network; })){
-        showErr(out, 'Could not reach the truvami API.',
-          'Check the network connection. If this app is hosted on a domain the API does not allow for browser requests (CORS), ' +
-          'host it on a truvami domain or ask the platform team to allow this origin.');
+        showErr(out, 'Could not reach the API (blocked or offline).',
+          isProxy()
+            ? 'Your proxy endpoint did not respond. Check it is deployed and returns CORS headers:<br><code>' + esc(getBase()) + '</code>'
+            : 'The browser blocked this request. api.truvami.com only sends CORS headers to allow-listed truvami origins, so a page hosted elsewhere cannot call it directly.<br><br>' +
+              'Fix it by either:<br>' +
+              '• hosting this app on an allow-listed truvami origin, or<br>' +
+              '• tapping <b>Endpoint</b> and pointing it at your own proxy (see truvami-eol-proxy.js).');
         return;
       }
 
