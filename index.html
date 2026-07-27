@@ -44,16 +44,21 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     html, body { height: 100%; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
 
     body {
       font-family: 'Inter', -apple-system, system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
       font-size: 14px;
       line-height: 1.5;
       padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ── TOPBAR ── */
@@ -83,6 +88,9 @@
       color: var(--accent); background: var(--accent-dim);
       letter-spacing: 0.04em;
     }
+    .topbar-nav { display: flex; gap: 4px; min-width: 0; }
+    .nav-short { display: none; }
+    .topbar-navbtn { flex-shrink: 0; }
 
     /* ── DEVICE SELECTOR ── */
     .device-selector-wrap {
@@ -289,8 +297,15 @@
       .page-hdr       { margin-bottom: 14px; }
       .page-hdr h1    { font-size: 1rem; }
       .page-hdr p     { font-size: 0.79rem; }
-      .topbar         { padding-left: 14px; padding-right: 14px; }
+      .topbar         { padding-left: max(14px, var(--sal)); padding-right: max(14px, var(--sar)); gap: 10px; overflow: hidden; }
       .topbar-badge   { display: none; }
+      .topbar-sep     { display: none; }
+      .topbar-logo    { height: 20px; flex-shrink: 0; }
+      .topbar-nav     { flex: 1; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; justify-content: flex-start; }
+      .topbar-nav::-webkit-scrollbar { display: none; }
+      .topbar-navbtn  { padding: 7px 11px !important; font-size: 0.74rem !important; min-height: 36px; }
+      .nav-full       { display: none; }
+      .nav-short      { display: inline; }
       .card           { padding: 13px 11px; border-radius: 12px; margin-bottom: 11px; }
       .card > h3      { margin-top: 13px; }
       .cfg-table td   { padding: 6px 8px; }
@@ -305,9 +320,8 @@
       .btn-row {
         position: sticky; bottom: 0;
         background: linear-gradient(to top, var(--bg) 75%, transparent);
-        padding: 12px 0 4px;
+        padding: 12px 11px calc(4px + var(--sab));
         margin: 4px -11px 0;
-        padding-left: 11px; padding-right: 11px;
         z-index: 20;
       }
       .device-selector-wrap { padding: 11px 14px; }
@@ -364,18 +378,18 @@
        onerror="this.style.display='none';document.getElementById('lf').style.display='block'">
   <span id="lf" style="display:none;font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:0.05em">truvami</span>
   <div class="topbar-sep"></div>
-  <nav style="display:flex;gap:4px">
-    <button id="nav-config" onclick="selectMode('config')"
+  <nav class="topbar-nav">
+    <button id="nav-config" class="topbar-navbtn" onclick="selectMode('config')"
       style="background:var(--accent-dim);border:1px solid var(--accent-glow);color:var(--accent);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      Downlink Configurator
+      <span class="nav-full">Downlink Configurator</span><span class="nav-short">Config</span>
     </button>
-    <button id="nav-energy" onclick="selectMode('energy')"
+    <button id="nav-energy" class="topbar-navbtn" onclick="selectMode('energy')"
       style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      ⚡ Energy Budget
+      <span class="nav-full">⚡ Energy Budget</span><span class="nav-short">⚡ Energy</span>
     </button>
-    <button id="nav-health" onclick="selectMode('health')"
+    <button id="nav-health" class="topbar-navbtn" onclick="selectMode('health')"
       style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      📡 Device Health
+      <span class="nav-full">📡 Device Health</span><span class="nav-short">📡 Health</span>
     </button>
   </nav>
   <div class="topbar-badge" style="margin-left:auto">Internal Tool</div>
