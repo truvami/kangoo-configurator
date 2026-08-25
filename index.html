@@ -391,6 +391,10 @@
       style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
       <span class="nav-full">📡 Device Health</span><span class="nav-short">📡 Health</span>
     </button>
+    <button id="nav-customers" class="topbar-navbtn" onclick="selectMode('customers')"
+      style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
+      <span class="nav-full">👥 Customer Devices</span><span class="nav-short">👥 Devices</span>
+    </button>
   </nav>
   <div class="topbar-badge" style="margin-left:auto">Internal Tool</div>
 </div>
@@ -1723,22 +1727,573 @@
 
 </div><!-- /#panel-health -->
 
+<!-- ═══════════ CUSTOMER DEVICES ═══════════ -->
+<div id="panel-customers" class="tab-panel">
+  <div class="page-hdr">
+    <h1>👥 Customer Devices</h1>
+    <p>Look up a customer and inspect the <strong>device type</strong> and full <strong>configuration</strong> of every device assigned to them. Data is read live from the truvami API (<span class="mono">v1</span>). Your API key is entered once and stored only on this device.</p>
+  </div>
+
+  <style>
+    /* ── Customer Devices tab (scoped) ── */
+    .cd-keyrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .cd-keystate { font-family:var(--mono); font-size:0.74rem; color:var(--muted); padding:3px 9px; border:1px solid var(--border); border-radius:999px; background:var(--surface-2); }
+    .cd-keystate.ok { color:var(--accent); border-color:var(--accent-glow); background:var(--accent-dim); }
+    .cd-or { display:flex; align-items:center; gap:12px; margin:16px 0; color:var(--muted); font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+    .cd-or::before, .cd-or::after { content:''; flex:1; height:1px; background:var(--border); }
+    .cd-inline { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+    .cd-inline .field { flex:1; min-width:220px; margin-bottom:0; }
+    .cd-custlist { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
+    .cd-cust { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); cursor:pointer; transition:all 0.12s; text-align:left; }
+    .cd-cust:hover { border-color:var(--accent-glow); background:var(--surface-3); }
+    .cd-cust-name { font-weight:600; font-size:0.86rem; }
+    .cd-cust-uuid { font-family:var(--mono); font-size:0.7rem; color:var(--muted); }
+    .cd-results { margin-top:18px; display:none; }
+    .cd-results.show { display:block; }
+    .cd-rhdr { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .cd-rhdr h2 { font-size:1rem; font-weight:700; }
+    .cd-rhdr .cd-cust-uuid { font-size:0.72rem; }
+    .cd-chips { display:flex; gap:6px; flex-wrap:wrap; margin:4px 0 14px; }
+    .cd-chip { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; padding:3px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); color:var(--muted); }
+    .cd-chip b { color:var(--text); font-family:var(--mono); }
+    .cd-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    .cd-toolbar select, .cd-toolbar input { padding:7px 10px; }
+    .cd-toolbar input { flex:1; min-width:180px; }
+    .cd-count { font-size:0.76rem; color:var(--muted); margin-left:auto; }
+    .cd-tablewrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-lg); }
+    table.cd-table { width:100%; border-collapse:collapse; font-size:0.82rem; min-width:720px; }
+    table.cd-table th { text-align:left; padding:9px 12px; background:var(--surface-2); color:var(--muted); font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); white-space:nowrap; }
+    table.cd-table td { padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    table.cd-table tr.cd-row { cursor:pointer; transition:background 0.1s; }
+    table.cd-table tr.cd-row:hover { background:var(--surface-2); }
+    table.cd-table tr.cd-row.open { background:var(--surface-2); }
+    .cd-chev { display:inline-block; transition:transform 0.15s; color:var(--muted); }
+    tr.cd-row.open .cd-chev { transform:rotate(90deg); color:var(--accent); }
+    .cd-label { font-weight:600; }
+    .cd-eui { font-family:var(--mono); font-size:0.76rem; color:var(--accent); }
+    .cd-typebadge { display:inline-block; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:5px; border:1px solid var(--border-hi); background:var(--surface-3); color:var(--text); white-space:nowrap; }
+    .cd-muted { color:var(--muted); }
+    .cd-detail td { background:var(--bg); padding:0; }
+    .cd-detail-inner { padding:16px 18px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; }
+    .cd-sect h4 { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+    .cd-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+    .cd-pill { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); }
+    .cd-pill.on  { color:var(--accent); border-color:var(--accent-glow); background:var(--accent-dim); }
+    .cd-pill.off { color:var(--muted); }
+    .cd-kv { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .cd-kv td { padding:4px 0; border-bottom:1px solid var(--border); vertical-align:top; }
+    .cd-kv tr:last-child td { border-bottom:none; }
+    .cd-kv td:first-child { color:var(--muted); padding-right:12px; white-space:nowrap; }
+    .cd-kv td:last-child { text-align:right; font-family:var(--mono); font-size:0.78rem; }
+    .cd-loading { display:flex; align-items:center; gap:10px; padding:16px; color:var(--muted); font-size:0.84rem; }
+    .cd-cors { margin-top:14px; font-size:0.78rem; color:var(--muted); line-height:1.6; }
+    .cd-cors code { font-family:var(--mono); color:var(--accent); font-size:0.74rem; }
+    @media (max-width:640px){ .cd-detail-inner { grid-template-columns:1fr; } }
+  </style>
+
+  <!-- 1 · API KEY -->
+  <div class="card" style="margin-bottom:14px">
+    <h2>1 · API key</h2>
+    <div class="card-sub">Sent as the <span class="mono">X-Api-Key</span> header. Needs the <span class="mono">customers:read</span> and <span class="mono">devices:read</span> scopes (admin). Stored on this device only — shared with the Device Health tab.</div>
+    <div class="cd-keyrow">
+      <span id="cd-keystate" class="cd-keystate">No API key saved</span>
+      <button class="btn-s" onclick="cdSetKey()">Set / change key</button>
+      <button class="btn-dk" onclick="cdSetBase()">Endpoint</button>
+    </div>
+  </div>
+
+  <!-- 2 · CHOOSE CUSTOMER -->
+  <div class="card">
+    <h2>2 · Choose customer</h2>
+    <div class="card-sub">Search by name, or paste a customer UUID directly.</div>
+
+    <div class="cd-inline">
+      <div class="field">
+        <label for="cd-search">Search customers by name</label>
+        <input type="text" id="cd-search" placeholder="e.g. Acme Logistics" onkeydown="if(event.key==='Enter')cdSearchCustomers()">
+      </div>
+      <button class="btn-p" onclick="cdSearchCustomers()">Search</button>
+    </div>
+    <div id="cd-custlist" class="cd-custlist"></div>
+
+    <div class="cd-or">or</div>
+
+    <div class="cd-inline">
+      <div class="field">
+        <label for="cd-uuid">Customer UUID</label>
+        <input type="text" id="cd-uuid" placeholder="123e4567-e89b-12d3-a456-426614174000" spellcheck="false" onkeydown="if(event.key==='Enter')cdLoadByUuid()">
+      </div>
+      <button class="btn-p" onclick="cdLoadByUuid()">Load devices</button>
+    </div>
+
+    <div id="cd-err" class="err-box"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="cd-results" class="cd-results">
+    <div class="card">
+      <div class="cd-rhdr">
+        <h2 id="cd-cust-name">—</h2>
+        <span id="cd-cust-uuid" class="cd-cust-uuid"></span>
+      </div>
+      <div id="cd-chips" class="cd-chips"></div>
+
+      <div class="cd-toolbar">
+        <select id="cd-typefilter" onchange="cdApplyFilters()"><option value="">All device types</option></select>
+        <input type="text" id="cd-filter" placeholder="Filter by label or DevEUI…" oninput="cdApplyFilters()">
+        <button class="btn-dk" onclick="cdReload()">↻ Refresh</button>
+        <button class="btn-s" onclick="cdExportCsv()">⤓ Export CSV</button>
+        <span id="cd-count" class="cd-count"></span>
+      </div>
+
+      <div id="cd-tablehost"></div>
+    </div>
+  </div>
+</div><!-- /#panel-customers -->
+
+<script>
+/* ══════════════════════════════════════════
+   CUSTOMER DEVICES TAB
+   Reads live from the truvami v1 API.
+   Reuses the API key stored by the Device Health tab
+   (localStorage 'truvami_api_key' + optional 'truvami_api_base').
+══════════════════════════════════════════ */
+(function(){
+  var CD_KEY_STORE  = 'truvami_api_key';
+  var CD_BASE_STORE = 'truvami_api_base';
+  var CD_DEFAULT    = 'https://api.truvami.com/v1';
+  var CD_PAGE_LIMIT = 100;   // max allowed by the API
+  var CD_MAX_PAGES  = 100;   // safety cap (10k devices)
+
+  var cdState = { uuid:null, name:null, devices:[], loading:false };
+
+  /* ── helpers ── */
+  function cdEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function cdGetKey(){ try { return localStorage.getItem(CD_KEY_STORE) || ''; } catch(e){ return ''; } }
+  function cdGetBase(){ var b=''; try{ b=localStorage.getItem(CD_BASE_STORE)||''; }catch(e){} return (b||CD_DEFAULT).replace(/\/+$/,''); }
+  function cdIsProxy(){ return cdGetBase() !== CD_DEFAULT; }
+  function cdMask(k){ return !k ? '' : (k.length<=12 ? k.slice(0,4)+'…' : k.slice(0,9)+'…'+k.slice(-4)); }
+
+  function cdFmtAge(ms){
+    if(ms==null) return '';
+    if(ms<0) ms=0;
+    var mins=Math.round(ms/60000);
+    if(mins<60) return mins+' min ago';
+    var h=Math.floor(mins/60), mm=mins%60;
+    if(h<48) return h+'h '+mm+'m ago';
+    return Math.floor(h/24)+' days ago';
+  }
+  function cdFmtTime(iso){
+    if(!iso) return '—';
+    var d=new Date(iso);
+    if(isNaN(d)) return cdEsc(iso);
+    var age=cdFmtAge(Date.now()-d.getTime());
+    return d.toLocaleString() + (age ? '  ·  '+age : '');
+  }
+
+  /* ── key / endpoint management ── */
+  function cdRefreshKeyState(){
+    var el=document.getElementById('cd-keystate');
+    if(!el) return;
+    var k=cdGetKey();
+    var txt = k ? ('key '+cdMask(k)) : 'No API key saved';
+    txt += ' · ' + (cdIsProxy() ? 'proxy endpoint' : 'direct API');
+    el.textContent = txt;
+    el.className = 'cd-keystate' + (k ? ' ok' : '');
+  }
+  window.cdSetKey = function(){
+    // Reuse the Health-tab prompt when present so both tabs stay in sync.
+    if(typeof window.dhPromptApiKey === 'function'){
+      window.dhPromptApiKey(true);
+    } else {
+      var cur=cdGetKey();
+      var v=window.prompt('Enter your truvami API key\n\nStored only on this device, sent as the X-Api-Key header.\nRequired read scopes:\n  • customers:read\n  • devices:read', cur||'');
+      if(v!==null){ try{ localStorage.setItem(CD_KEY_STORE, v.trim()); }catch(e){} }
+    }
+    cdRefreshKeyState();
+    return cdGetKey();
+  };
+  window.cdSetBase = function(){
+    if(typeof window.dhPromptApiBase === 'function'){ window.dhPromptApiBase(); cdRefreshKeyState(); return; }
+    var cur=cdGetBase();
+    var v=window.prompt('API endpoint base URL\n\nDefault:\n'+CD_DEFAULT+'\n\nOr paste your own CORS proxy base URL to run from any origin.\nLeave blank to reset to default.', cur);
+    if(v===null) return;
+    v=v.trim().replace(/\/+$/,'');
+    try{ localStorage.setItem(CD_BASE_STORE, v); }catch(e){}
+    cdRefreshKeyState();
+  };
+
+  /* ── fetch wrapper ── */
+  function cdFetch(path){
+    var key=cdGetKey();
+    var headers={ 'Accept':'application/json' };
+    if(key) headers['X-Api-Key']=key;
+    return fetch(cdGetBase()+path, { headers:headers }).then(function(r){
+      return r.text().then(function(t){
+        var j=null; try{ j=JSON.parse(t); }catch(e){}
+        return { status:r.status, ok:r.ok, json:j, text:t };
+      });
+    }, function(e){ return { network:true, error:String(e) }; });
+  }
+
+  function cdShowErr(msg, isCors){
+    var el=document.getElementById('cd-err');
+    if(!el) return;
+    var html = msg;
+    if(isCors){
+      html += '<div class="cd-cors">The browser blocked the request. <code>api.truvami.com</code> only sends CORS headers to allow-listed truvami origins, so a page served from elsewhere (or <code>file://</code>) cannot call it directly.<br>Fix: host this tool on an allow-listed truvami origin, or tap <b>Endpoint</b> and point it at your own CORS proxy.</div>';
+    }
+    el.innerHTML = html;
+    el.style.display = 'block';
+  }
+  function cdClearErr(){ var el=document.getElementById('cd-err'); if(el){ el.style.display='none'; el.innerHTML=''; } }
+
+  function cdErrorFromResp(r, ctx){
+    if(r.network) return { msg:'<b>Could not reach the API.</b> '+cdEsc(ctx||''), cors:true };
+    if(r.status===401) return { msg:'<b>API key rejected (401).</b> Tap “Set / change key” and enter a valid key.' };
+    if(r.status===403) return { msg:'<b>Forbidden (403).</b> This key is missing a required scope (needs customers:read + devices:read, admin).' };
+    if(r.status===404) return { msg:'<b>Not found (404).</b> '+cdEsc(ctx||'')+' Check the customer UUID.' };
+    var apiMsg = (r.json && (r.json.message || (r.json.errors && r.json.errors[0] && r.json.errors[0].message))) || ('HTTP '+r.status);
+    return { msg:'<b>Request failed.</b> '+cdEsc(apiMsg) };
+  }
+
+  function cdEnsureKey(){
+    if(cdGetKey() || cdIsProxy()) return true;
+    cdSetKey();
+    return !!cdGetKey();
+  }
+
+  /* ── customer search ── */
+  window.cdSearchCustomers = function(){
+    cdClearErr();
+    var q=(document.getElementById('cd-search').value||'').trim();
+    var list=document.getElementById('cd-custlist');
+    if(!cdEnsureKey()){ cdShowErr('<b>An API key is required.</b> Tap “Set / change key” above.'); return; }
+    list.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Searching customers…</div>';
+    var path='/customers?limit=25' + (q ? '&search='+encodeURIComponent(q) : '');
+    cdFetch(path).then(function(r){
+      if(!r.ok){ list.innerHTML=''; var e=cdErrorFromResp(r,'Listing customers requires an admin key.'); cdShowErr(e.msg, e.cors); return; }
+      var data=(r.json && r.json.data) || [];
+      if(!data.length){ list.innerHTML='<div class="cd-loading">No customers matched “'+cdEsc(q)+'”.</div>'; return; }
+      list.innerHTML = data.map(function(c){
+        return '<button class="cd-cust" onclick="cdPickCustomer('+"'"+cdEsc(c.uuid)+"','"+cdEsc((c.name||'').replace(/'/g,"\\'"))+"'"+')">'+
+               '<span class="cd-cust-name">'+cdEsc(c.name||'(unnamed)')+'</span>'+
+               '<span class="cd-cust-uuid">'+cdEsc(c.uuid)+'</span></button>';
+      }).join('');
+    });
+  };
+
+  window.cdPickCustomer = function(uuid, name){
+    document.getElementById('cd-custlist').innerHTML='';
+    cdLoadDevices(uuid, name);
+  };
+
+  window.cdLoadByUuid = function(){
+    cdClearErr();
+    var uuid=(document.getElementById('cd-uuid').value||'').trim();
+    if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uuid)){
+      cdShowErr('<b>That doesn’t look like a UUID.</b> Expected e.g. 123e4567-e89b-12d3-a456-426614174000.'); return;
+    }
+    if(!cdEnsureKey()){ cdShowErr('<b>An API key is required.</b> Tap “Set / change key” above.'); return; }
+    cdLoadDevices(uuid, null);
+  };
+
+  window.cdReload = function(){ if(cdState.uuid) cdLoadDevices(cdState.uuid, cdState.name); };
+
+  /* ── load all devices for a customer (paginated) ── */
+  function cdLoadDevices(uuid, name){
+    cdClearErr();
+    cdState.uuid=uuid; cdState.name=name; cdState.devices=[]; cdState.loading=true;
+    var results=document.getElementById('cd-results');
+    results.classList.add('show');
+    document.getElementById('cd-cust-name').textContent = name || 'Customer';
+    document.getElementById('cd-cust-uuid').textContent = uuid;
+    document.getElementById('cd-chips').innerHTML='';
+    document.getElementById('cd-typefilter').innerHTML='<option value="">All device types</option>';
+    document.getElementById('cd-filter').value='';
+    document.getElementById('cd-count').textContent='';
+    var host=document.getElementById('cd-tablehost');
+    host.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Loading devices…</div>';
+    try { results.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){}
+
+    var acc=[];
+    function loadPage(page){
+      var path='/customers/'+encodeURIComponent(uuid)+'/devices?page='+page+'&limit='+CD_PAGE_LIMIT;
+      return cdFetch(path).then(function(r){
+        if(!r.ok){ throw cdErrorFromResp(r, 'Fetching devices for this customer.'); }
+        var data=(r.json && r.json.data) || [];
+        acc=acc.concat(data);
+        var meta=(r.json && r.json.metadata) || {};
+        var totalPages = meta.totalPages || 1;
+        if(page<totalPages && page<CD_MAX_PAGES && data.length>0){
+          host.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Loading devices… '+acc.length+' of '+(meta.total||'?')+'</div>';
+          return loadPage(page+1);
+        }
+        return acc;
+      });
+    }
+
+    loadPage(1).then(function(devices){
+      cdState.devices=devices; cdState.loading=false;
+      cdRenderSummary();
+      cdRenderDevices();
+    }).catch(function(e){
+      cdState.loading=false;
+      host.innerHTML='';
+      if(e && e.msg) cdShowErr(e.msg, e.cors);
+      else cdShowErr('<b>Unexpected error.</b> '+cdEsc(String(e && e.error || e)));
+    });
+  }
+
+  /* ── summary chips + type filter ── */
+  function cdRenderSummary(){
+    var counts={};
+    cdState.devices.forEach(function(d){
+      var t=(d.deviceType && d.deviceType.name) || 'unknown';
+      counts[t]=(counts[t]||0)+1;
+    });
+    var chips=document.getElementById('cd-chips');
+    var total=cdState.devices.length;
+    var html='<span class="cd-chip">Total <b>'+total+'</b></span>';
+    var types=Object.keys(counts).sort();
+    html += types.map(function(t){ return '<span class="cd-chip">'+cdEsc(t)+' <b>'+counts[t]+'</b></span>'; }).join('');
+    chips.innerHTML=html;
+
+    var sel=document.getElementById('cd-typefilter');
+    sel.innerHTML='<option value="">All device types</option>' +
+      types.map(function(t){ return '<option value="'+cdEsc(t)+'">'+cdEsc(t)+' ('+counts[t]+')</option>'; }).join('');
+  }
+
+  /* ── config field definitions ── */
+  var CD_BOOL_FIELDS = [
+    {k:'ble', label:'BLE'}, {k:'gps', label:'GPS'}, {k:'wifi', label:'WiFi'},
+    {k:'rotationStatusInverted', label:'Rotation inverted'},
+    {k:'rotationStatusConfirmed', label:'Rotation confirmed'}
+  ];
+  var CD_NUM_FIELDS = [
+    {k:'movingInterval', label:'Moving interval', unit:'s'},
+    {k:'steadyInterval', label:'Steady interval', unit:'s'},
+    {k:'configInterval', label:'Config interval', unit:'s'},
+    {k:'gpsTimeout', label:'GPS timeout', unit:'s'},
+    {k:'batteryInterval', label:'Battery interval', unit:'s'},
+    {k:'rejoinInterval', label:'Rejoin interval', unit:'s'},
+    {k:'accelerometerThreshold', label:'Accel. threshold', unit:''},
+    {k:'accelerometerDelay', label:'Accel. delay', unit:''},
+    {k:'lowLightThreshold', label:'Low light threshold', unit:''},
+    {k:'highLightThreshold', label:'High light threshold', unit:''},
+    {k:'batchSize', label:'Batch size', unit:''},
+    {k:'bufferSize', label:'Buffer size', unit:''}
+  ];
+  var CD_CONFIG_KEYS = CD_BOOL_FIELDS.map(function(f){return f.k;}).concat(CD_NUM_FIELDS.map(function(f){return f.k;}));
+
+  function cdBoolCell(v){
+    if(v===true) return '<span class="cd-pill on">✓ '+'</span>';
+    if(v===false) return '<span class="cd-pill off">✗ '+'</span>';
+    return '<span class="cd-pill off">—</span>';
+  }
+  function cdNum(v, unit){
+    if(v==null) return '—';
+    return v + (unit ? (' '+unit) : '');
+  }
+
+  /* ── device table ── */
+  function cdRenderDevices(){
+    var host=document.getElementById('cd-tablehost');
+    var typeF=(document.getElementById('cd-typefilter').value||'');
+    var txtF=((document.getElementById('cd-filter').value||'').trim().toLowerCase());
+
+    var rows=cdState.devices.filter(function(d){
+      var t=(d.deviceType && d.deviceType.name) || 'unknown';
+      if(typeF && t!==typeF) return false;
+      if(txtF){
+        var hay=((d.label||'')+' '+(d.devEui||'')+' '+t).toLowerCase();
+        if(hay.indexOf(txtF)<0) return false;
+      }
+      return true;
+    });
+
+    document.getElementById('cd-count').textContent = rows.length+' of '+cdState.devices.length+' shown';
+
+    if(!cdState.devices.length){ host.innerHTML='<div class="cd-loading">This customer has no devices.</div>'; return; }
+    if(!rows.length){ host.innerHTML='<div class="cd-loading">No devices match the current filter.</div>'; return; }
+
+    var html='<div class="cd-tablewrap"><table class="cd-table"><thead><tr>'+
+      '<th style="width:24px"></th><th>Label</th><th>DevEUI</th><th>Device type</th><th>FW</th><th>HW</th><th>Last uplink</th><th>Last position</th></tr></thead><tbody>';
+
+    rows.forEach(function(d){
+      var idx=cdState.devices.indexOf(d);
+      var t=(d.deviceType && d.deviceType.name) || 'unknown';
+      var lu=d.lastUplink;
+      var luTxt = lu ? ('p'+(lu.port==null?'?':lu.port)+' · '+cdFmtTime(lu.receivedAt)) : '<span class="cd-muted">never</span>';
+      var lp=d.lastPosition;
+      var lpTxt;
+      if(lp && lp.latitude!=null && lp.longitude!=null){
+        var src=lp.source?(lp.source.toUpperCase()+' · '):'';
+        var age=lp.capturedAt?cdFmtAge(Date.now()-new Date(lp.capturedAt).getTime()):'';
+        lpTxt=cdEsc(src)+'<span class="cd-eui">'+lp.latitude.toFixed(4)+', '+lp.longitude.toFixed(4)+'</span>'+(age?' <span class="cd-muted">· '+cdEsc(age)+'</span>':'');
+      } else {
+        lpTxt='<span class="cd-muted">no fix</span>';
+      }
+      html += '<tr class="cd-row" id="cd-row-'+idx+'" onclick="cdToggleRow('+idx+')">'+
+        '<td><span class="cd-chev">▸</span></td>'+
+        '<td class="cd-label">'+(d.label?cdEsc(d.label):'<span class="cd-muted">(no label)</span>')+'</td>'+
+        '<td class="cd-eui">'+cdEsc(d.devEui||'—')+'</td>'+
+        '<td><span class="cd-typebadge">'+cdEsc(t)+'</span></td>'+
+        '<td>'+cdEsc(d.firmwareVersion||'—')+'</td>'+
+        '<td>'+cdEsc(d.hardwareVersion||'—')+'</td>'+
+        '<td>'+luTxt+'</td>'+
+        '<td>'+lpTxt+'</td></tr>';
+      html += '<tr class="cd-detail" id="cd-detail-'+idx+'" style="display:none"><td colspan="8">'+cdDetailHtml(d)+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    host.innerHTML=html;
+  }
+
+  function cdDetailHtml(d){
+    var cfg=d.config||{};
+    // booleans
+    var pills=CD_BOOL_FIELDS.map(function(f){
+      var v=cfg[f.k];
+      var cls = v===true ? 'on' : 'off';
+      var mark = v===true ? '✓' : (v===false ? '✗' : '—');
+      return '<span class="cd-pill '+cls+'">'+mark+' '+cdEsc(f.label)+'</span>';
+    }).join('');
+    // numeric grid
+    var numRows=CD_NUM_FIELDS.map(function(f){
+      return '<tr><td>'+cdEsc(f.label)+'</td><td>'+cdEsc(cdNum(cfg[f.k], f.unit))+'</td></tr>';
+    }).join('');
+
+    // device meta
+    var groups=(d.groups && d.groups.length) ? d.groups.length+' group'+(d.groups.length>1?'s':'') : 'none';
+    var metaRows=''+
+      '<tr><td>Firmware</td><td>'+cdEsc(d.firmwareVersion||'—')+'</td></tr>'+
+      '<tr><td>Hardware</td><td>'+cdEsc(d.hardwareVersion||'—')+'</td></tr>'+
+      '<tr><td>Alerts enabled</td><td>'+(d.alertsEnabled===false?'no':(d.alertsEnabled===true?'yes':'—'))+'</td></tr>'+
+      '<tr><td>Groups</td><td>'+cdEsc(groups)+'</td></tr>'+
+      '<tr><td>Created</td><td>'+cdEsc(cdFmtTime(d.createdAt))+'</td></tr>'+
+      '<tr><td>Updated</td><td>'+cdEsc(cdFmtTime(d.updatedAt))+'</td></tr>';
+
+    // last uplink
+    var lu=d.lastUplink;
+    var luSect;
+    if(lu){
+      luSect='<table class="cd-kv">'+
+        '<tr><td>Port</td><td>'+(lu.port==null?'—':lu.port)+'</td></tr>'+
+        '<tr><td>Received</td><td>'+cdEsc(cdFmtTime(lu.receivedAt))+'</td></tr>'+
+        '<tr><td>Spreading factor</td><td>'+(lu.spreadingFactor==null?'—':('SF'+lu.spreadingFactor))+'</td></tr>'+
+        '<tr><td>Avg RSSI</td><td>'+(lu.averageRssi==null?'—':lu.averageRssi+' dBm')+'</td></tr>'+
+        '<tr><td>Avg SNR</td><td>'+(lu.averageSnr==null?'—':lu.averageSnr+' dB')+'</td></tr>'+
+        '<tr><td>Confirmed</td><td>'+(lu.confirmed===true?'yes':(lu.confirmed===false?'no':'—'))+'</td></tr>'+
+        '</table>';
+    } else {
+      luSect='<div class="cd-muted" style="font-size:0.82rem">No uplink on record.</div>';
+    }
+
+    // last position
+    var lp=d.lastPosition;
+    var lpSect;
+    if(lp && (lp.latitude!=null || lp.longitude!=null)){
+      var lat=lp.latitude, lon=lp.longitude;
+      var hasCoords=(lat!=null && lon!=null);
+      var coordTxt = hasCoords ? (lat.toFixed(5)+', '+lon.toFixed(5)) : '—';
+      var mapCell = hasCoords
+        ? '<a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" rel="noopener" class="cd-eui" style="text-decoration:underline">'+cdEsc(coordTxt)+' ↗</a>'
+        : '—';
+      lpSect='<table class="cd-kv">'+
+        '<tr><td>Coordinates</td><td>'+mapCell+'</td></tr>'+
+        '<tr><td>Source</td><td>'+(lp.source?cdEsc(lp.source.toUpperCase()):'—')+'</td></tr>'+
+        '<tr><td>Accuracy</td><td>'+(lp.accuracy==null?'—':lp.accuracy+' m')+'</td></tr>'+
+        '<tr><td>Altitude</td><td>'+(lp.altitude==null?'—':lp.altitude+' m')+'</td></tr>'+
+        '<tr><td>Satellites</td><td>'+(lp.satellites==null?'—':lp.satellites)+'</td></tr>'+
+        '<tr><td>Moving</td><td>'+(lp.moving===true?'yes':(lp.moving===false?'no':'—'))+'</td></tr>'+
+        '<tr><td>Captured</td><td>'+cdEsc(cdFmtTime(lp.capturedAt))+'</td></tr>'+
+        '</table>';
+    } else {
+      lpSect='<div class="cd-muted" style="font-size:0.82rem">No position on record.</div>';
+    }
+
+    return '<div class="cd-detail-inner">'+
+      '<div class="cd-sect"><h4>Configuration</h4><div class="cd-pills">'+pills+'</div>'+
+        '<table class="cd-kv">'+numRows+'</table></div>'+
+      '<div class="cd-sect"><h4>Device</h4><table class="cd-kv">'+metaRows+'</table></div>'+
+      '<div class="cd-sect"><h4>Last uplink</h4>'+luSect+'</div>'+
+      '<div class="cd-sect"><h4>Last position</h4>'+lpSect+'</div>'+
+    '</div>';
+  }
+
+  window.cdToggleRow = function(idx){
+    var row=document.getElementById('cd-row-'+idx);
+    var det=document.getElementById('cd-detail-'+idx);
+    if(!row||!det) return;
+    var open=det.style.display!=='none';
+    det.style.display = open ? 'none' : '';
+    row.classList.toggle('open', !open);
+  };
+
+  window.cdApplyFilters = function(){ cdRenderDevices(); };
+
+  /* ── CSV export ── */
+  window.cdExportCsv = function(){
+    if(!cdState.devices.length){ return; }
+    var head=['label','devEui','deviceType','firmwareVersion','hardwareVersion','lastUplinkPort','lastUplinkReceivedAt',
+              'lastPositionLat','lastPositionLon','lastPositionSource','lastPositionAccuracyM','lastPositionCapturedAt',
+              'alertsEnabled','groups'].concat(CD_CONFIG_KEYS);
+    function cell(v){
+      if(v==null) return '';
+      var s=String(v);
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }
+    var lines=[head.join(',')];
+    cdState.devices.forEach(function(d){
+      var cfg=d.config||{};
+      var lu=d.lastUplink||{};
+      var lp=d.lastPosition||{};
+      var base=[ d.label, d.devEui, (d.deviceType&&d.deviceType.name), d.firmwareVersion, d.hardwareVersion,
+                 (lu.port==null?'':lu.port), lu.receivedAt||'',
+                 (lp.latitude==null?'':lp.latitude), (lp.longitude==null?'':lp.longitude), lp.source||'',
+                 (lp.accuracy==null?'':lp.accuracy), lp.capturedAt||'',
+                 d.alertsEnabled, (d.groups?d.groups.join('|'):'') ];
+      var conf=CD_CONFIG_KEYS.map(function(k){ return cfg[k]; });
+      lines.push(base.concat(conf).map(cell).join(','));
+    });
+    var csv=lines.join('\n');
+    var blob=new Blob([csv],{type:'text/csv'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    var nm=(cdState.name||cdState.uuid||'customer').replace(/[^a-z0-9]+/gi,'_').toLowerCase();
+    a.href=url; a.download='truvami_devices_'+nm+'.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+  };
+
+  /* ── init (called by selectMode when the tab opens) ── */
+  window.cdInit = function(){ cdRefreshKeyState(); };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', cdRefreshKeyState);
+  else cdRefreshKeyState();
+})();
+</script>
+
+
 <script>
 /* ══════════════════════════════════════════
    TOP-LEVEL MODE SWITCHER
 ══════════════════════════════════════════ */
 function selectMode(mode) {
-  const isEnergy = mode === 'energy';
-  const isHealth = mode === 'health';
-  const isConfig = !isEnergy && !isHealth;
+  const isEnergy    = mode === 'energy';
+  const isHealth    = mode === 'health';
+  const isCustomers = mode === 'customers';
+  const isConfig    = !isEnergy && !isHealth && !isCustomers;
 
   // Stop QR scanner if switching away from health tab
   if (!isHealth) { if (typeof dhStopScan === 'function') dhStopScan(); }
 
   // Toggle nav button styles
-  const navConfig = document.getElementById('nav-config');
-  const navEnergy = document.getElementById('nav-energy');
-  const navHealth = document.getElementById('nav-health');
+  const navConfig    = document.getElementById('nav-config');
+  const navEnergy    = document.getElementById('nav-energy');
+  const navHealth    = document.getElementById('nav-health');
+  const navCustomers = document.getElementById('nav-customers');
 
   function setNav(el, active) {
     if (!el) return;
@@ -1749,6 +2304,7 @@ function selectMode(mode) {
   setNav(navConfig, isConfig);
   setNav(navEnergy, isEnergy);
   setNav(navHealth, isHealth);
+  setNav(navCustomers, isCustomers);
 
   // Show/hide device selector bar
   const devBar = document.querySelector('.device-selector-wrap');
@@ -1762,6 +2318,10 @@ function selectMode(mode) {
   } else if (isHealth) {
     const hp = document.getElementById('panel-health');
     if (hp) hp.classList.add('active');
+  } else if (isCustomers) {
+    const cp = document.getElementById('panel-customers');
+    if (cp) cp.classList.add('active');
+    if (typeof cdInit === 'function') cdInit();
   } else {
     const sel = document.getElementById('deviceSelect');
     const id  = sel ? sel.value : 'tagsl';
