@@ -922,6 +922,19 @@
             <input type="number" id="eb_steady_interval_s" value="7200" min="60" max="86400" step="60">
           </div>
         </div>
+        <div class="frow" id="eb_quick_moving_wrap" style="display:none">
+          <div class="field">
+            <label for="eb_quick_moving_interval_s" style="display:flex;align-items:center;gap:6px">
+              Quick moving interval (s)
+              <span title="Cellular tracker only. A second acquisition timer that runs during movement. Its fixes are NOT sent over LoRa — they are stored in the S&amp;F buffer and drained in bulk over LTE. Set 0 to disable." style="cursor:help;color:var(--muted);font-size:0.8em">ⓘ</span>
+            </label>
+            <input type="number" id="eb_quick_moving_interval_s" value="30" min="0" max="86400" step="5">
+          </div>
+          <div class="field">
+            <label style="color:var(--muted);font-size:0.7rem;margin-bottom:5px">Quick fixes / day (buffered → LTE)</label>
+            <div class="result-box" id="eb_stat_quickfix" style="padding:8px 11px;min-height:34px;font-size:0.82rem">—</div>
+          </div>
+        </div>
         <div class="frow">
           <div class="field">
             <label for="eb_movement_h">Movement duration (h/day)</label>
@@ -945,10 +958,11 @@
         <div class="hint-box" style="font-size:0.74rem;margin-top:4px">
           Fixes/day = <strong>movement_h × 3600 / moving_interval</strong> + <strong>(24 − movement_h) × 3600 / steady_interval</strong><br>
           <span style="color:var(--accent)">Tag S:</span> always scans all enabled techs; indoor/outdoor only gates uplinks (GNSS UL outdoors, WiFi/BLE UL indoors) — scan energy always counted<br>
-          <span style="color:var(--accent)">Others:</span> GNSS outdoors / WiFi indoors (mutually exclusive per event)<br>
+          <span style="color:var(--accent)">Tag L / XL / Lumen / Nomad:</span> GNSS outdoors / WiFi indoors (mutually exclusive per event)<br>
           <span style="color:var(--accent)">Tag S/L:</span> autonomous GNSS only &nbsp;·&nbsp;
-          <span style="color:var(--accent)">Tag XL / Lumen:</span> assisted GNSS only &nbsp;·&nbsp;
-          <span style="color:var(--accent)">Cellular:</span> both modes
+          <span style="color:var(--accent)">Tag XL / Lumen:</span> assisted GNSS only<br>
+          <span style="color:#3a9fff">Cellular:</span> GNSS is <strong>always drawn, continuously</strong> (100%, not gated by outdoor). WiFi is the indoor GNSS-fail fallback, so its power is <strong>added on top</strong> for the indoor fraction. LoRa uplink is still one position/event (GNSS outdoors, WiFi indoors).<br>
+          <span style="color:#3a9fff">Cellular quick moving:</span> a second timer active during movement. <strong>Moving</strong> fixes → LoRa uplink per fix; <strong>quick moving</strong> fixes → stored in buffer, no LoRa, drained in bulk over LTE (adds WiFi/BLE scan energy; GNSS is already continuous).
         </div>
         <div class="checks" style="margin-top:10px">
           <label class="check"><input type="checkbox" id="eb_gnss_en" checked> GNSS enabled</label>
@@ -1085,6 +1099,9 @@
         </div>
         <div id="eb_gnss_overlap_note" style="display:none;margin-top:8px" class="hint-box">
           <span style="color:#f5a623">⚠ Fast TX mode</span> — moving interval &lt; GNSS acquisition time: LoRa messages are sent faster than fixes complete. LoRa count &gt; position fixes.
+        </div>
+        <div id="eb_quick_moving_note" style="display:none;margin-top:8px" class="hint-box">
+          <span style="color:#3a9fff">📥 Quick moving buffer active</span> — quick-moving fixes acquire GNSS/WiFi/BLE during movement and are stored in the S&amp;F buffer (no LoRa uplink). They are drained in bulk over LTE, so they add acquisition energy but no LoRa TX.
         </div>
       </div>
 
@@ -3609,17 +3626,27 @@ const DEVICES = {
   cellular: {
     label:        'Cellular Tracker',
     V:            3.7,
-    I_idle_uA:   10,    // same low-power MCU family as Lumen
-    gnssAssisted: { I_mA: 14,   t_s: 40  },
-    gnssAuto:     { I_mA: 14,   t_s: 600 },
+    I_idle_uA:   220,   // measured idle current
+    gnssAssisted: null,  // assisted GNSS not used on the cellular tracker
+    // Autonomous GNSS: 16 mA. During movement GNSS runs continuously; during the
+    // steady period it draws in windows of t_s (40 s) at the steady interval.
+    gnssAuto:     { I_mA: 16,   t_s: 40 },
     wifi:         { I_mA: 10.5, t_s: 3.5 },  // LR1110 Wi-Fi scan: ~10.5 mA, 3.5 s, ~10.2 µAh @ 3.3 V
     ble:          { I_mA: 3.6,  t_s: 5.0 },  // EFR32BG2X BLE scan: ~3.6 mA, 5 s, ~5.0 µAh @ 3.3 V
     has_ble:     true,
+    defBleEnabled: false, // BLE disabled by default on the cellular tracker
     ble_beacons_per_scan: 12,
-    lte:          { I_mA: 150,  t_s: 120 }, // LTE data sync, 1×/day default
+    lte:          { I_mA: 150,  t_s: 30 },  // LTE data sync, 30 s, 1×/day default
     gnss_uplinks: 1,
     gnss_continuous: true, // GNSS stays ON if moving_interval < 5 min
     has_lte:     true,
+    has_quick_moving: true,      // second moving timer: fixes buffered + drained over LTE, no LoRa
+    defQuickMoving_s: 30,        // default quick-moving interval (s)
+    // Acquisition model: GNSS is ALWAYS attempted (continuous), and WiFi is only
+    // used as an indoor fallback when GNSS fails — so WiFi energy is ADDED ON TOP
+    // of GNSS for the indoor fraction (not mutually exclusive).
+    gnss_scan_always:      true, // GNSS scan/energy counted at 100% of the time (not gated by outdoor)
+    gnss_always_continuous:true, // GNSS runs continuously whenever active, regardless of moving interval
     defBat_mAh:  2000,
     defChem:     'lipo',
     defIndoorPct: 50,
@@ -3677,6 +3704,7 @@ function ebGetConfig() {
     etx:               Math.max(1, Math.min(3, fv('etx', 1.2))),
     indoor_pct:        fv('indoor_pct', 20) / 100,
     moving_interval_s: fv('moving_interval_s', 600),
+    quick_moving_interval_s: fv('quick_moving_interval_s', 30),
     steady_interval_s: fv('steady_interval_s', 7200),
     movement_h:        fv('movement_h', 3),
     hb_interval_s:     fv('hb_interval_s', 86400),
@@ -3741,10 +3769,28 @@ function ebCalc() {
   const movement_s = Math.min(c.movement_h, 24) * 3600;
   const steady_s   = 86400 - movement_s;
 
-  // ── Continuous GNSS mode (Tag S / Cellular, moving_interval < 5 min) ──
-  const continuous = !!(dev.gnss_continuous && c.moving_interval_s < 300);
+  // ── Quick moving timer (Cellular) ──
+  // A second acquisition timer that runs only during movement. Its fixes are
+  // NOT sent over LoRa: they are stored in the S&F buffer and drained in bulk
+  // over LTE. They therefore add GNSS/WiFi/BLE acquisition ENERGY but produce
+  // zero LoRa uplinks. Set 0 to disable.
+  const hasQuick = !!dev.has_quick_moving && c.quick_moving_interval_s > 0;
+  const quick_events_moving = hasQuick ? movement_s / Math.max(1, c.quick_moving_interval_s) : 0;
+
+  // ── Continuous GNSS mode ──
+  //   Cellular (gnss_always_continuous): GNSS is ALWAYS continuous whenever active.
+  //   Tag S (gnss_continuous): continuous only when moving_interval < 5 min.
+  // Note: the quick-moving timer does NOT flip this flag. Quick-moving fixes are
+  // modelled additively below (extra GNSS/WiFi/BLE acquisition, capped by the
+  // GNSS acquisition time) so enabling them can never lower total consumption.
+  const continuous = !!(dev.gnss_always_continuous || (dev.gnss_continuous && c.moving_interval_s < 300));
   const contNote = document.getElementById('eb_gnss_continuous_note');
-  if (contNote) contNote.style.display = continuous ? '' : 'none';
+  if (contNote) {
+    contNote.style.display = continuous ? '' : 'none';
+    contNote.innerHTML = dev.gnss_always_continuous
+      ? '<span style="color:var(--warn)">⚡ Continuous GNSS mode active</span> — this tracker always attempts GNSS, so GNSS power is drawn continuously during movement (WiFi is added on top indoors as the GNSS-fail fallback).'
+      : '<span style="color:var(--warn)">⚡ Continuous GNSS mode active</span> — moving interval &lt; 5 min: GNSS stays ON for the full movement duration.';
+  }
 
   // ── GNSS fix duration for this device type ──
   // Lumen / Tag XL (gnss_type='assisted' or gnssAuto===null) → assisted only
@@ -3778,9 +3824,12 @@ function ebCalc() {
   const wifi_ul_frac  = (c.wifi_enabled && !!dev.wifi) ? (scanAll ? indoor : indoor) : 0.0;  // WiFi UL only sent indoors
 
   // Fractions used for SCAN ENERGY (energy gating).
-  //   scanAll: every enabled tech scans on every event → fraction = 1.0 when enabled
-  //   default: scan only happens for the location-matched events → same as UL frac
-  const gnss_scan_frac = c.gnss_enabled ? (scanAll ? 1.0 : outdoor) : 0.0;
+  //   scanAll (Tag S): every enabled tech scans on every event → fraction = 1.0.
+  //   gnss_scan_always (Cellular): GNSS is always attempted (1.0), but WiFi only
+  //     runs as the indoor fallback → WiFi energy stays gated to the indoor fraction
+  //     and is ADDED ON TOP of the always-on GNSS.
+  //   default: scan only happens for the location-matched events → same as UL frac.
+  const gnss_scan_frac = c.gnss_enabled ? ((scanAll || dev.gnss_scan_always) ? 1.0 : outdoor) : 0.0;
   const wifi_scan_frac = (c.wifi_enabled && !!dev.wifi) ? (scanAll ? 1.0 : indoor) : 0.0;
 
   // Back-compat aliases (used elsewhere in display / export)
@@ -3793,24 +3842,33 @@ function ebCalc() {
   // ── GNSS fix capacity (limited by acquisition time) — for energy only ──
   //   When interval < gnss_fix_s (fastTx), LoRa events fire faster than fixes complete.
   //   Energy is counted at the max achievable fix rate; LoRa uses the full event rate.
-  //   In continuous mode the entire moving phase is ONE uninterrupted GNSS session;
-  //   no per-fix energy is added (neither for moving nor steady period).
+  //   In continuous mode the entire moving phase is ONE uninterrupted GNSS session,
+  //   so no per-fix MOVING energy is added. For always-continuous devices (Cellular)
+  //   the STEADY period still takes discrete GNSS fixes at the steady interval
+  //   (GNSS is always attempted), so those are still counted below.
+  // Combined moving cadence for ENERGY: moving timer + quick-moving timer.
+  // Both timers acquire a fix, so their fix rates add (capped by acquisition time).
+  const gnss_moving_rate  = 1 / Math.max(c.moving_interval_s, gnss_fix_s)
+                          + (hasQuick ? 1 / Math.max(c.quick_moving_interval_s, gnss_fix_s) : 0);
   const gnss_fix_cap_moving = continuous ? 0
-    : movement_s / Math.max(c.moving_interval_s, gnss_fix_s);
-  const gnss_fix_cap_steady = continuous ? 0
+    : Math.min(movement_s * gnss_moving_rate, movement_s / gnss_fix_s);
+  const gnss_fix_cap_steady = (continuous && !dev.gnss_always_continuous) ? 0
     : steady_s / Math.max(c.steady_interval_s, gnss_fix_s);
   // SCAN energy uses gnss_scan_frac (all events when scanAll); UL count uses gnss_ul_frac
   const gnss_fixes_moving = gnss_fix_cap_moving * gnss_scan_frac;
   const gnss_fixes_steady = gnss_fix_cap_steady * gnss_scan_frac;
   const gnss_fixes_day    = gnss_fixes_moving + gnss_fixes_steady;
 
-  // WiFi: scan time is short — each enabled event produces one scan (energy)
-  const wifi_scans_day = pos_events_day * wifi_scan_frac;
+  // WiFi: scan time is short — each enabled event produces one scan (energy).
+  // Quick-moving fixes also scan WiFi (buffered), so they add scan energy.
+  const wifi_scans_day = (pos_events_day + quick_events_moving) * wifi_scan_frac;
 
   // fastTx warning: moving interval shorter than GNSS acquisition
   const fastTx = !continuous && gnss_scan_frac > 0 && c.moving_interval_s < gnss_fix_s;
   const overlapNote = document.getElementById('eb_gnss_overlap_note');
   if (overlapNote) overlapNote.style.display = fastTx ? '' : 'none';
+  const quickNote = document.getElementById('eb_quick_moving_note');
+  if (quickNote) quickNote.style.display = hasQuick ? '' : 'none';
 
   const hb_per_day = 86400 / Math.max(3600, c.hb_interval_s);
 
@@ -3841,9 +3899,10 @@ function ebCalc() {
   let ble_scans_day = 0;
   let ble_ul_events_day = 0;
   if (c.ble_enabled && dev.has_ble) {
-    ble_scans_day = pos_events_day * (scanAll ? 1.0 : 1.0);   // scan energy on every event
+    // scan energy on every event, incl. quick-moving fixes (buffered, no LoRa UL)
+    ble_scans_day = (pos_events_day + quick_events_moving) * (scanAll ? 1.0 : 1.0);
     ble_ul_events_day = scanAll ? (pos_events_day * indoor)   // UL only indoors for scanAll
-                                : pos_events_day;             // UL every event otherwise
+                                : pos_events_day;             // UL every event otherwise (quick excluded)
     const maxBeacons = c.ble_max_beacons || dev.ble_beacons_per_scan || 12;
     ble_lora_ul_per_scan = Math.ceil(maxBeacons / 6);
     lora_msgs_from_ble = ble_ul_events_day * ble_lora_ul_per_scan;
@@ -3869,8 +3928,11 @@ function ebCalc() {
   let gnss_J_day = 0;
   if (c.gnss_enabled) {
     if (continuous) {
-      // One uninterrupted GNSS session for the full movement period — no per-fix overhead
+      // One uninterrupted GNSS session for the full movement period — no per-fix overhead.
       gnss_J_day = gnss_fix_mA * 1e-3 * V * movement_s * gnss_scan_frac;
+      // Always-continuous devices (Cellular) still take discrete GNSS fixes during
+      // the steady period (GNSS is always attempted) — add them on top.
+      gnss_J_day += gnss_fixes_steady * E_gnss_fix;
     } else {
       gnss_J_day = gnss_fixes_day * E_gnss_fix;
     }
@@ -4021,25 +4083,27 @@ function ebCalc() {
                     : gnss_fix_s+' s',
       ePerEvent:  c.gnss_enabled
                     ? (continuous
-                        ? fmtJ(gnss_J_day)+' total (1 session)'
+                        ? fmtJ(gnss_J_day)+' total ('+(dev.gnss_always_continuous?'always on':'1 session')+')'
                         : fmtJ(E_gnss_fix)+'/fix')
                     : 'disabled',
       eventsDay:  c.gnss_enabled
                     ? (continuous
-                        ? '1 session ('+(scanAll?'always scans':Math.round(gnss_frac*100)+'% outdoor')+')'
+                        ? (dev.gnss_always_continuous
+                            ? 'always on ('+(movement_s/3600).toFixed(1)+' h cont. + '+gnss_fixes_steady.toFixed(1)+' steady fixes)'
+                            : '1 session ('+(scanAll?'always scans':Math.round(gnss_frac*100)+'% outdoor')+')')
                         : gnss_fixes_day.toFixed(1)+(fastTx?' (capped by acq.)':'')
                             +(scanAll?' (all events; UL '+Math.round(gnss_ul_frac*100)+'% outdoor)':' ('+Math.round(gnss_frac*100)+'% of events)'))
                     : '0',
       J:          gnss_J_day,
     },
     {
-      label:      'WiFi scan (indoor, 1 UL/scan)',
+      label:      'WiFi scan ('+(dev.gnss_scan_always?'indoor, on top of GNSS':'indoor, 1 UL/scan')+')',
       color:      '#b36fff',
       I:          dev.wifi ? c.ev_wifi_mA.toFixed(1)+' mA' : 'N/A',
       t:          dev.wifi ? c.ev_wifi_s+' s' : 'N/A',
       ePerEvent:  dev.wifi ? (c.wifi_enabled ? fmtJ(E_wifi_fix)+'/scan' : 'disabled') : 'no WiFi',
       eventsDay:  dev.wifi && c.wifi_enabled
-                    ? wifi_scans_day.toFixed(1)+(scanAll?' (all events; UL '+Math.round(wifi_ul_frac*100)+'% indoor)':' ('+Math.round(wifi_frac*100)+'% of events)')
+                    ? wifi_scans_day.toFixed(1)+(dev.gnss_scan_always?' (indoor GNSS-fail fallback, '+Math.round(indoor*100)+'%)':(scanAll?' (all events; UL '+Math.round(wifi_ul_frac*100)+'% indoor)':' ('+Math.round(wifi_frac*100)+'% of events)'))
                     : '0',
       J:          wifi_J_day,
       hide:       !dev.wifi && wifi_J_day === 0,
@@ -4050,17 +4114,17 @@ function ebCalc() {
       I:          dev.has_ble ? c.ev_ble_mA.toFixed(1)+' mA' : 'N/A',
       t:          dev.has_ble ? c.ev_ble_s+' s' : 'N/A',
       ePerEvent:  dev.has_ble ? (c.ble_enabled ? fmtJ(E_ble_fix)+'/scan' : 'disabled') : 'no BLE',
-      eventsDay:  dev.has_ble && c.ble_enabled ? ble_scans_day.toFixed(1)+' (all pos. events)' : '0',
+      eventsDay:  dev.has_ble && c.ble_enabled ? ble_scans_day.toFixed(1)+(hasQuick?' (pos. + quick)':' (all pos. events)') : '0',
       J:          ble_J_day,
       hide:       !dev.has_ble && ble_J_day === 0,
     },
     {
-      label:      'LTE comm. (1×/day)',
+      label:      'LTE comm. (1×/day'+(hasQuick?' · drains quick buffer':'')+')',
       color:      '#3a9fff',
       I:          dev.has_lte ? c.ev_lte_mA+' mA' : 'N/A',
       t:          dev.has_lte ? c.ev_lte_s+' s' : 'N/A',
       ePerEvent:  dev.has_lte ? fmtJ(lte_J_day)+'/session' : 'no LTE',
-      eventsDay:  dev.has_lte ? '1' : '0',
+      eventsDay:  dev.has_lte ? '1'+(hasQuick?' ('+quick_events_moving.toFixed(0)+' fixes buffered)':'') : '0',
       J:          lte_J_day,
       hide:       !dev.has_lte,
     },
@@ -4109,16 +4173,29 @@ function ebCalc() {
   if (summaryEl) {
     const gnssLabel = continuous ? 'continuous session' : isAssisted ? 'assisted ('+gnss_ul+' UL/fix)' : 'auto (1 UL/fix)';
     const gnssCount = continuous ? '1 session' : gnss_fixes_day.toFixed(1)+'/day';
+    const gnssSummary = dev.gnss_scan_always
+      ? `<span style="color:var(--text)">GNSS:</span> always on (${continuous?'continuous':'per-fix'}, 100%; UL ${Math.round(gnss_frac*100)}% outdoor)`
+      : `<span style="color:var(--text)">GNSS:</span> ${gnssCount} (${Math.round(gnss_frac*100)}% → ${gnssLabel})`;
+    const wifiSummary = dev.gnss_scan_always
+      ? `<span style="color:var(--text)">WiFi:</span> ${wifi_scans_day.toFixed(1)}/day on top (indoor ${Math.round(indoor*100)}%)`
+      : `<span style="color:var(--text)">WiFi scans:</span> ${wifi_scans_day.toFixed(1)}/day (${Math.round(wifi_frac*100)}% → 1 UL/scan)`;
     summaryEl.innerHTML =
       `<span style="color:var(--text)">Position events:</span> ${pos_events_day.toFixed(1)}/day `+
       `(${pos_events_moving.toFixed(1)} moving + ${pos_events_steady.toFixed(1)} steady) &nbsp;·&nbsp; `+
-      `<span style="color:var(--text)">GNSS:</span> ${gnssCount} (${Math.round(gnss_frac*100)}% → ${gnssLabel}) &nbsp;·&nbsp; `+
-      `<span style="color:var(--text)">WiFi scans:</span> ${wifi_scans_day.toFixed(1)}/day (${Math.round(wifi_frac*100)}% → 1 UL/scan) &nbsp;·&nbsp; `+
+      (hasQuick ? `<span style="color:#3a9fff">Quick moving:</span> ${quick_events_moving.toFixed(1)}/day (buffered → LTE, no LoRa) &nbsp;·&nbsp; ` : '')+
+      gnssSummary + ` &nbsp;·&nbsp; ` +
+      wifiSummary + ` &nbsp;·&nbsp; `+
       `<span style="color:var(--text)">Logical msgs:</span> ${total_msgs_day.toFixed(1)}/day `+
       `(${lora_msgs_from_gnss.toFixed(0)} GNSS + ${lora_msgs_from_wifi.toFixed(0)} WiFi + ${lora_msgs_from_ble.toFixed(0)} BLE + ${hb_per_day.toFixed(0)} HB) &nbsp;·&nbsp; `+
       `<span style="color:var(--text)">E[tx]:</span> ${etx.toFixed(3)} &nbsp;·&nbsp; `+
       `<span style="color:var(--text)">Actual TX:</span> ${actual_tx_day.toFixed(1)}/day`;
   }
+
+  // Fixes/day stat boxes
+  setCell('stat_fixday', pos_events_day.toFixed(1) + ' (LoRa)'
+    + (hasQuick ? ' + ' + quick_events_moving.toFixed(0) + ' quick' : ''));
+  const qfEl = document.getElementById('eb_stat_quickfix');
+  if (qfEl) qfEl.textContent = hasQuick ? quick_events_moving.toFixed(1) + ' /day' : '—';
 
   ebDrawDonut(energyComponents, totalOut_J_day, harvest_J_day);
 
@@ -4144,6 +4221,7 @@ function ebCalc() {
     gnss_fixes_day, gnss_fixes_moving, gnss_fixes_steady,
     wifi_scans_day, ble_scans_day, ble_lora_ul_per_scan, lora_msgs_from_ble,
     pos_events_day, pos_events_moving, pos_events_steady,
+    hasQuick, quick_events_moving,
     gnss_frac, wifi_frac, gnss_ul, isAssisted,
     gnss_fix_mA, gnss_fix_s, E_gnss_fix, E_wifi_fix, E_ble_fix,
     idle_J_day, lora_J_day, gnss_J_day, wifi_J_day, ble_J_day, lte_J_day,
@@ -4889,6 +4967,13 @@ function ebOnDeviceChange() {
   showHide('eb_ev_ble_row',     !!dev.has_ble);
   showHide('eb_ev_lte_stat_row',!!dev.has_lte);
 
+  // Quick-moving timer (Cellular only)
+  showHide('eb_quick_moving_wrap', !!dev.has_quick_moving);
+  const qmEl = eb('quick_moving_interval_s');
+  if (qmEl && dev.has_quick_moving && dev.defQuickMoving_s !== undefined) {
+    qmEl.value = dev.defQuickMoving_s;
+  }
+
   // BLE checkbox
   const bleCheck = document.getElementById('eb_ble_en_wrap');
   if (bleCheck) bleCheck.style.display = dev.has_ble ? '' : 'none';
@@ -4928,7 +5013,7 @@ function ebOnDeviceChange() {
 // Wire up all inputs
 function ebInit() {
   ['device','chem','bat_mAh','voltage','vovdis','design_margin','sf','batch_size','etx','indoor_pct',
-   'moving_interval_s','steady_interval_s','movement_h','hb_interval_s',
+   'moving_interval_s','quick_moving_interval_s','steady_interval_s','movement_h','hb_interval_s',
    'wifi_en','gnss_en','ble_en','ble_max_beacons',
    'ev_idle_uA','ev_gnss_a_mA','ev_gnss_a_s','ev_gnss_auto_mA','ev_gnss_auto_s',
    'ev_wifi_mA','ev_wifi_s','ev_ble_mA','ev_ble_s','ev_lte_mA','ev_lte_s',
@@ -5155,11 +5240,14 @@ window.ebExportPDF = async function(btn) {
     const sfLabel = sfSel ? sfSel.options[sfSel.selectedIndex].text : '—';
     const rows2 = [
       ['Moving interval',   d.c.moving_interval_s+' s'],
+      d.hasQuick
+        ? ['Quick moving interval', d.c.quick_moving_interval_s+' s  ('+d.quick_events_moving.toFixed(0)+' fixes → buffer/LTE, no LoRa)']
+        : null,
       ['Steady interval',   d.c.steady_interval_s+' s'],
       ['Movement',          d.c.movement_h+' h/day  ('+d.pos_events_moving.toFixed(1)+' events)'],
       ['Heartbeat interval',d.c.hb_interval_s+' s  ('+d.hb_per_day.toFixed(1)+'/day)'],
       ['Indoor ratio',      Math.round(d.c.indoor_pct*100)+'%  → GNSS '+Math.round(d.gnss_frac*100)+'% / WiFi '+Math.round(d.wifi_frac*100)+'%'],
-    ];
+    ].filter(Boolean);
     for (const [k,v] of rows2) { kv(k, v, inputX, iy, inputColW, C.muted, C.dark); iy += 13; }
     iy += 5;
 
@@ -5306,7 +5394,7 @@ function ebSaveConfig() {
   const ids = [
     'device','chem','bat_mAh','voltage','design_margin',
     'sf','batch_size','etx','indoor_pct',
-    'moving_interval_s','steady_interval_s','movement_h','hb_interval_s',
+    'moving_interval_s','quick_moving_interval_s','steady_interval_s','movement_h','hb_interval_s',
     'wifi_en','gnss_en','ble_en',
     'ev_idle_uA',
     'ev_gnss_a_mA','ev_gnss_a_s',
