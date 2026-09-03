@@ -4261,9 +4261,19 @@ function ebCalc() {
       : `${(_ch.vCutoff*_vScale).toFixed(2)} V (cell PCM) — system cuts at ${c.vovdis.toFixed(3)} V`;
   }
 
+  // ── Total GNSS fix COUNT per day (for activity totals) ──
+  // For always-continuous devices (Cellular) the GNSS fix count is the number of
+  // position events that trigger a GNSS acquisition: quick + moving (movement) plus
+  // steady. This includes the buffered quick fixes (default 3600/day), which the
+  // energy-capped gnss_fixes_day does not.
+  const gnss_fixes_count_day = c.gnss_enabled
+    ? (dev.gnss_always_continuous ? (gnss_pos_events_moving + gnss_pos_events_steady) : gnss_fixes_day)
+    : 0;
+
   // ── Snapshot for PDF export ──
   window._ebExportData = {
     c, dev, chem, V,
+    gnss_fixes_count_day, gnss_pos_events_moving, gnss_pos_events_steady,
     bat_J, backup_bat_J, total_bat_J, bbChem,
     margin, life_days, life_days_nominal,
     totalOut_J_day, totalOut_margined, netOut_J_day, harvest_J_day,
@@ -4785,7 +4795,7 @@ function ebDrawLifetimeTotals(validCurves) {
     { key: 'msgs',  label: 'LoRa messages (total UL)',  perDay: exp.total_msgs_day,    unit: 'msgs',     icon: '📡' },
     { key: 'tx',    label: '— actual transmissions',    perDay: exp.actual_tx_day,     unit: 'tx',       icon: '↑',  sub: true },
     { key: 'hb',    label: '— heartbeats',              perDay: exp.hb_per_day,        unit: 'hb',       icon: '♥',  sub: true },
-    { key: 'gnss',  label: 'GNSS fixes',                perDay: exp.gnss_fixes_day,    unit: 'fixes',    icon: '🛰️', enabled: c.gnss_enabled },
+    { key: 'gnss',  label: 'GNSS fixes' + (exp.hasQuick ? ' (incl. quick)' : ''), perDay: (exp.gnss_fixes_count_day != null ? exp.gnss_fixes_count_day : exp.gnss_fixes_day), unit: 'fixes', icon: '🛰️', enabled: c.gnss_enabled },
     { key: 'wifi',  label: 'Wi-Fi scans',              perDay: exp.wifi_scans_day,    unit: 'scans',    icon: '📶', enabled: c.wifi_enabled },
     { key: 'ble',   label: 'BLE scans',                 perDay: exp.ble_scans_day,     unit: 'scans',    icon: '🔵', enabled: c.ble_enabled },
     { key: 'pos',   label: 'Position events',           perDay: exp.pos_events_day,    unit: 'events',   icon: '📍' },
@@ -4858,7 +4868,8 @@ function ebDrawLifetimeTotals(validCurves) {
   // Note
   if (noteEl) {
     const anyCal = margins.some(m => lifeByMargin[m]?.cal);
-    const perDayNote = `Per-day rates: ${fmtNum(exp.total_msgs_day)} msgs, ${c.gnss_enabled ? fmtNum(exp.gnss_fixes_day)+' GNSS, ' : ''}${c.wifi_enabled ? fmtNum(exp.wifi_scans_day)+' Wi-Fi, ' : ''}${c.ble_enabled ? fmtNum(exp.ble_scans_day)+' BLE, ' : ''}${fmtNum(exp.pos_events_day)} position events.`;
+    const gnssCountDay = exp.gnss_fixes_count_day != null ? exp.gnss_fixes_count_day : exp.gnss_fixes_day;
+    const perDayNote = `Per-day rates: ${fmtNum(exp.total_msgs_day)} msgs, ${c.gnss_enabled ? fmtNum(gnssCountDay)+' GNSS'+(exp.hasQuick ? ' (incl. '+fmtNum(exp.quick_events_moving)+' quick)' : '')+', ' : ''}${c.wifi_enabled ? fmtNum(exp.wifi_scans_day)+' Wi-Fi, ' : ''}${c.ble_enabled ? fmtNum(exp.ble_scans_day)+' BLE, ' : ''}${fmtNum(exp.pos_events_day)} position events.`;
     noteEl.innerHTML = perDayNote + (anyCal ? ' &nbsp; <span style="color:var(--warn)">* lifetime capped by calendar aging, not energy budget.</span>' : '');
   }
 }
