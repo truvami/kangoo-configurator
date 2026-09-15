@@ -389,11 +389,7 @@
     </button>
     <button id="nav-health" class="topbar-navbtn" onclick="selectMode('health')"
       style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      <span class="nav-full">📡 Device Health</span><span class="nav-short">📡 Health</span>
-    </button>
-    <button id="nav-customers" class="topbar-navbtn" onclick="selectMode('customers')"
-      style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      <span class="nav-full">👥 Customer Devices</span><span class="nav-short">👥 Devices</span>
+      <span class="nav-full">📶 BLE Beacon</span><span class="nav-short">📶 Beacon</span>
     </button>
   </nav>
   <div class="topbar-badge" style="margin-left:auto">Internal Tool</div>
@@ -1320,34 +1316,8 @@
 <!-- ═══════════ DEVICE HEALTH ═══════════ -->
 <div id="panel-health" class="tab-panel">
   <div class="page-hdr">
-    <h1>📡 Device Health &amp; BLE Beacon</h1>
-    <p>Scan the QR code or barcode on any Truvami device. For LoRaWAN devices the <strong>DevEUI</strong> is detected and dashboard links appear. For BLE Beacons the <strong>serial number</strong> is converted to a MAC address.</p>
-  </div>
-
-  <!-- ── EOL session bar (operator / station / work order) ── -->
-  <div id="dh-session" class="dh-session">
-    <div class="dh-session-head" onclick="dhToggleSession()">
-      <span class="dh-session-title">🏭 End-of-Line Session</span>
-      <span class="dh-session-summary" id="dh-session-summary">Tap to set operator &amp; station</span>
-      <span class="dh-session-chev" id="dh-session-chev">▾</span>
-    </div>
-    <div class="dh-session-body" id="dh-session-body">
-      <div class="dh-session-grid">
-        <div class="field">
-          <label for="eol-operator">Operator ID</label>
-          <input type="text" id="eol-operator" placeholder="e.g. J. Dupont" oninput="dhSaveSession()">
-        </div>
-        <div class="field">
-          <label for="eol-station">Station / Line ID</label>
-          <input type="text" id="eol-station" placeholder="e.g. EOL-2" oninput="dhSaveSession()">
-        </div>
-        <div class="field">
-          <label for="eol-workorder">Work order / Batch</label>
-          <input type="text" id="eol-workorder" placeholder="e.g. WO-10482" oninput="dhSaveSession()">
-        </div>
-      </div>
-      <div class="dh-session-note">Stored on this device and attached to every saved result. Remembered until you change it.</div>
-    </div>
+    <h1>📶 BLE Beacon</h1>
+    <p>Scan the QR code on a Truvami <strong>BLE Beacon</strong> — the printed <strong>serial number</strong> is converted to its BLE <strong>MAC address</strong>. Works with the white-on-teal beacon labels (inverted QR codes are read automatically).</p>
   </div>
 
   <style>
@@ -1430,30 +1400,6 @@
     #dh-scan-passes.active { color:var(--muted); }
     #dh-error { color:var(--danger); font-size:0.78rem; text-align:center; display:none; }
     #dh-error.show { display:block; }
-    /* DevEUI result */
-    #dh-deveui-display { display:none; flex-direction:column; align-items:center; gap:10px; width:100%; }
-    #dh-deveui-display.show { display:flex; }
-    #dh-deveui-value {
-      font-family:var(--mono); font-size:1.05rem; font-weight:700; color:var(--accent);
-      background:var(--surface-2); border:1px solid var(--accent-glow);
-      border-radius:var(--radius); padding:10px 20px; letter-spacing:0.08em;
-      word-break:break-all; text-align:center;
-    }
-    /* link buttons */
-    .dh-link-btn {
-      display:none; align-items:center; justify-content:center; gap:8px;
-      width:100%; max-width:320px; padding:13px 20px; font-size:0.9rem;
-      font-weight:700; border:none; border-radius:var(--radius);
-      cursor:pointer; text-decoration:none; transition:opacity 0.15s;
-    }
-    .dh-link-btn.show { display:flex; }
-    .dh-link-btn:hover { opacity:0.88; }
-    #dh-open-btn      { background:var(--accent); color:#000; }
-    #dh-dashboard-btn { background:var(--surface-3); color:var(--text); border:1px solid var(--border-hi); }
-    #dh-lns-btn       { background:var(--accent-2); color:#fff; }
-    /* manual */
-    #dh-manual-row { display:flex; gap:8px; width:100%; align-items:center; }
-    #dh-manual-input { flex:1; font-family:var(--mono); text-transform:uppercase; }
     /* BLE beacon result */
     #dh-beacon-display { display:none; flex-direction:column; gap:8px; width:100%; }
     #dh-beacon-display.show { display:flex; }
@@ -1477,89 +1423,6 @@
     #dh-beacon-copy-status.vis { opacity:1; }
     #dh-beacon-copy-status.suc { color:var(--success); }
     #dh-beacon-copy-status.err { color:var(--danger); }
-
-    /* ── HEALTH CHECK (paste-based) ── */
-    #dh-hc-card { display:none; width:100%; text-align:left;
-      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 15px; }
-    #dh-hc-card.show { display:block; }
-    .dh-hc-title { font-size:0.9rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-    .dh-hc-crit { font-size:0.74rem; color:var(--muted); margin-bottom:10px; line-height:1.5; }
-    .dh-hc-crit b { color:var(--accent); }
-    .dh-hc-steps { margin:0 0 11px 0; padding-left:18px; font-size:0.78rem; color:var(--muted); line-height:1.7; }
-    .dh-hc-steps strong { color:var(--text); }
-    #dh-hc-input { width:100%; min-height:70px; font-family:var(--mono); font-size:0.78rem; }
-    .dh-hc-actions { display:flex; gap:8px; margin-top:10px; }
-    #dh-hc-result { margin-top:12px; }
-    /* verdict banner */
-    .dh-verdict { display:flex; align-items:center; gap:12px; border-radius:var(--radius-lg); padding:14px 16px; margin-bottom:12px; border:1px solid; }
-    .dh-verdict-badge { font-size:1.15rem; font-weight:800; letter-spacing:0.08em; padding:6px 16px; border-radius:999px; flex-shrink:0; }
-    .dh-verdict-sub { font-size:0.78rem; line-height:1.4; }
-    .dh-verdict.ok  { background:var(--accent-dim); border-color:var(--accent-glow); }
-    .dh-verdict.ok  .dh-verdict-badge { background:var(--accent); color:#000; }
-    .dh-verdict.ok  .dh-verdict-sub { color:var(--accent); }
-    .dh-verdict.ko  { background:var(--danger-dim); border-color:rgba(255,82,82,0.3); }
-    .dh-verdict.ko  .dh-verdict-badge { background:var(--danger); color:#fff; }
-    .dh-verdict.ko  .dh-verdict-sub { color:var(--danger); }
-    /* check rows */
-    .dh-chk { display:flex; align-items:flex-start; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); margin-bottom:7px; }
-    .dh-chk-ico { font-size:1rem; line-height:1.4; flex-shrink:0; }
-    .dh-chk-ico.ok { color:var(--accent); } .dh-chk-ico.ko { color:var(--danger); }
-    .dh-chk-body { flex:1; min-width:0; }
-    .dh-chk-name { font-size:0.8rem; font-weight:700; color:var(--text); }
-    .dh-chk-val  { font-size:0.75rem; color:var(--muted); font-family:var(--mono); margin-top:2px; word-break:break-word; }
-    .dh-chk-info { border-style:dashed; }
-    .dh-hc-note  { font-size:0.73rem; color:var(--muted); margin-top:6px; line-height:1.5; }
-    .dh-hc-err   { color:var(--danger); font-size:0.8rem; padding:10px 12px; background:var(--danger-dim); border:1px solid rgba(255,82,82,0.22); border-radius:var(--radius); }
-    .dh-key-row { display:flex; align-items:center; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; }
-    .dh-key-state { font-size:0.73rem; color:var(--muted); font-family:var(--mono); flex:1; min-width:0; }
-    .dh-key-state.ok { color:var(--accent); }
-    .dh-key-link { background:none; border:none; color:var(--accent-2); font-size:0.75rem; font-weight:700; cursor:pointer; padding:4px 2px; text-decoration:underline; -webkit-tap-highlight-color:transparent; min-height:auto; }
-    .dh-hc-fallback { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
-    .dh-hc-fallback > summary { font-size:0.78rem; color:var(--muted); cursor:pointer; -webkit-tap-highlight-color:transparent; list-style:none; }
-    .dh-hc-fallback > summary::-webkit-details-marker { display:none; }
-    .dh-hc-fallback > summary::before { content:'▸ '; color:var(--accent); }
-    .dh-hc-fallback[open] > summary::before { content:'▾ '; }
-    .dh-hc-checking { display:flex; align-items:center; gap:9px; font-size:0.82rem; color:var(--muted); padding:10px 0; }
-    .dh-spinner { width:16px; height:16px; border:2px solid var(--border-hi); border-top-color:var(--accent); border-radius:50%; animation:dhspin 0.7s linear infinite; flex-shrink:0; }
-    @keyframes dhspin { to { transform:rotate(360deg); } }
-    .dh-hc-saverow { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
-    .dh-save-status { font-size:0.78rem; color:var(--muted); }
-    .dh-save-status.suc { color:var(--accent); font-weight:700; }
-    .dh-save-status.err { color:var(--danger); font-weight:700; }
-
-    /* ── EOL SESSION BAR ── */
-    .dh-session { max-width:520px; margin:0 auto 16px; background:var(--surface); border:1px solid var(--border-hi); border-radius:var(--radius-lg); overflow:hidden; }
-    .dh-session-head { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-    .dh-session-title { font-size:0.82rem; font-weight:700; color:var(--text); white-space:nowrap; }
-    .dh-session-summary { flex:1; font-size:0.76rem; color:var(--muted); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); }
-    .dh-session-chev { color:var(--accent); font-size:0.85rem; transition:transform 0.2s; flex-shrink:0; }
-    .dh-session.collapsed .dh-session-chev { transform:rotate(-90deg); }
-    .dh-session-body { padding:0 14px 14px; }
-    .dh-session.collapsed .dh-session-body { display:none; }
-    .dh-session-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
-    .dh-session-note { font-size:0.72rem; color:var(--muted); margin-top:9px; line-height:1.5; }
-
-    /* ── AUDIT LOG ── */
-    .dh-audit-card { max-width:520px; margin:8px auto 0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:15px; }
-    .dh-audit-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
-    .dh-audit-title { font-size:0.9rem; font-weight:700; color:var(--text); }
-    .dh-audit-counts { font-size:0.74rem; font-family:var(--mono); color:var(--muted); text-align:right; }
-    .dh-audit-counts b.ok { color:var(--accent); } .dh-audit-counts b.ko { color:var(--danger); }
-    .dh-audit-search { width:100%; margin-bottom:10px; font-size:0.82rem; }
-    .dh-audit-list { display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-    .dh-audit-empty { font-size:0.78rem; color:var(--muted); text-align:center; padding:16px 0; }
-    .dh-rec { display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); }
-    .dh-rec-badge { font-size:0.66rem; font-weight:800; letter-spacing:0.05em; padding:3px 8px; border-radius:999px; flex-shrink:0; }
-    .dh-rec-badge.ok { background:var(--accent); color:#000; } .dh-rec-badge.ko { background:var(--danger); color:#fff; }
-    .dh-rec-main { flex:1; min-width:0; }
-    .dh-rec-eui { font-family:var(--mono); font-size:0.8rem; font-weight:700; color:var(--text); word-break:break-all; }
-    .dh-rec-meta { font-size:0.7rem; color:var(--muted); margin-top:2px; }
-    .dh-rec-seq { font-family:var(--mono); font-size:0.68rem; color:var(--muted); flex-shrink:0; }
-    .dh-audit-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    .dh-audit-foot { font-size:0.71rem; color:var(--muted); margin-top:10px; line-height:1.5; }
-    @media (max-width: 768px) {
-      .dh-session-grid { grid-template-columns:1fr; gap:8px; }
-    }
   </style>
 
   <div id="dh-scanner-wrap">
@@ -1575,7 +1438,7 @@
           <rect x="7" y="13" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>
           <path d="M13 13h1M16 13h1M13 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        Scan QR / Barcode
+        Scan QR code
       </button>
     </div>
 
@@ -1602,52 +1465,9 @@
       </div>
     </div>
 
-    <div id="dh-status">Point the camera at a DevEUI barcode or BLE Beacon QR code.</div>
+    <div id="dh-status">Point the camera at the BLE Beacon QR code.</div>
     <div id="dh-scan-passes"></div>
     <div id="dh-error"></div>
-
-    <!-- ── Result: DevEUI ── -->
-    <div id="dh-deveui-display">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em">Detected DevEUI</div>
-      <div id="dh-deveui-value">—</div>
-    </div>
-
-    <a id="dh-open-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Open Grafana Dashboard
-    </a>
-    <a id="dh-dashboard-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Open Truvami Dashboard
-    </a>
-    <a id="dh-lns-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
-        <rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M8 12h8M8 8h8M8 16h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      Open SBC LNS Portal
-    </a>
-
-    <!-- ── Health Check (automatic via dashboard API, login-only) ── -->
-    <div id="dh-hc-card">
-      <div class="dh-hc-title">🩺 Device Health Check</div>
-      <div class="dh-hc-crit">Pass rules: battery <b>= 100%</b> · GNSS position <b>&lt; 3 h</b> · WiFi position <b>&lt; 3 h</b>. Firmware is shown for reference.</div>
-      <div class="dh-hc-actions">
-        <button class="btn-p" id="dh-hc-run" onclick="dhRunDiagnostics()">🩺 Health Diagnostics</button>
-        <button class="btn-s" id="dh-hc-clear" onclick="dhClearHealthCheck()">Clear</button>
-      </div>
-      <div id="dh-hc-result"></div>
-      <div class="dh-key-row">
-        <span id="dh-key-state" class="dh-key-state">No API key saved</span>
-        <button class="dh-key-link" onclick="dhPromptApiKey(true)">Change key</button>
-        <button class="dh-key-link" onclick="dhPromptApiBase()">Endpoint</button>
-      </div>
-    </div>
 
     <!-- ── Result: BLE Beacon MAC ── -->
     <div id="dh-beacon-display">
@@ -1680,39 +1500,6 @@
     <!-- Manual entry options -->
     <div style="width:100%;display:flex;flex-direction:column;gap:10px">
 
-      <!-- LoRaWAN: last 5 digits shortcut -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">
-          ⌨️ LoRaWAN — quick entry (last 5 digits)
-        </div>
-        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-          Found on the device label. The prefix <span style="font-family:var(--mono);color:var(--text)">10CE45FFFE0</span> is added automatically.
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span style="font-family:var(--mono);font-size:0.78rem;color:var(--muted);white-space:nowrap;flex-shrink:0">10CE45FFFE0</span>
-          <input id="dh-short-input" type="text" placeholder="0C7F3" maxlength="5"
-            style="font-family:var(--mono);text-transform:uppercase;font-size:1rem;font-weight:700;letter-spacing:0.1em;text-align:center;flex:1;min-width:0"
-            oninput="this.value=this.value.toUpperCase().replace(/[^0-9A-F]/g,'');dhShortPreview()"
-            onkeydown="if(event.key==='Enter')dhApplyShort()">
-          <button class="btn-p" onclick="dhApplyShort()" style="white-space:nowrap;flex-shrink:0">Apply</button>
-        </div>
-        <div id="dh-short-preview" style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:7px;min-height:16px;letter-spacing:0.05em"></div>
-      </div>
-
-      <!-- LoRaWAN: full DevEUI -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">
-          LoRaWAN — full DevEUI (16 hex characters)
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="dh-manual-input" type="text" placeholder="e.g. 10CE45FFFE00C7F3" maxlength="20"
-            style="font-family:var(--mono);text-transform:uppercase;flex:1;min-width:0"
-            oninput="this.value=this.value.toUpperCase().replace(/[^0-9A-F]/g,'')"
-            onkeydown="if(event.key==='Enter')dhApplyManual()">
-          <button class="btn-p" onclick="dhApplyManual()" style="white-space:nowrap;flex-shrink:0">Apply</button>
-        </div>
-      </div>
-
       <!-- BLE Beacon: manual serial -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
         <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">
@@ -1734,579 +1521,14 @@
 
     <!-- Hint -->
     <div class="hint-box" style="width:100%;margin-top:4px">
-      <strong>LoRaWAN devices:</strong> scan or enter the DevEUI — dashboard links appear automatically.<br>
-      <strong>BLE Beacons:</strong> scan the QR code or enter the decimal serial — the MAC address is computed by reversing the 6-byte hex representation.<br>
-      <strong>Tip:</strong> Use <strong>3× / 4× / 5× zoom</strong> and the <strong>Torch</strong> for small or low-contrast labels.
+      <strong>How it works:</strong> scan the QR code on the beacon (or type the decimal serial) — the MAC address is computed by reversing the 6-byte hex representation of the serial.<br>
+      <strong>Inverted codes:</strong> the beacon QR is printed white on teal plastic, so it is read as an inverted code automatically.<br>
+      <strong>Tip:</strong> use <strong>3× / 4× / 5× zoom</strong> and the <strong>Torch</strong> for small or low-contrast labels, and hold the code steady inside the frame.
     </div>
 
   </div><!-- /#dh-scanner-wrap -->
 
-  <!-- ── Audit Log ── -->
-  <div id="dh-audit" class="dh-audit-card">
-    <div class="dh-audit-head">
-      <div class="dh-audit-title">📋 Audit Log</div>
-      <div class="dh-audit-counts" id="dh-audit-counts">No records yet</div>
-    </div>
-    <input type="text" id="dh-audit-search" class="dh-audit-search"
-           placeholder="Filter by DevEUI, operator, station, work order…" oninput="dhRenderLog()">
-    <div id="dh-audit-list" class="dh-audit-list"></div>
-    <div class="dh-audit-actions">
-      <button class="btn-p" onclick="dhExportCsv(false)">⬇︎ Export CSV</button>
-      <button class="btn-s" onclick="dhExportCsv(true)">Export failures only</button>
-      <button class="btn-d" onclick="dhClearLog()">Clear log…</button>
-    </div>
-    <div class="dh-audit-foot">Records are stored only on this device (IndexedDB). Export regularly and keep the CSV as your master record — clearing the app or deleting the PWA erases the log.</div>
-  </div>
-
 </div><!-- /#panel-health -->
-
-<!-- ═══════════ CUSTOMER DEVICES ═══════════ -->
-<div id="panel-customers" class="tab-panel">
-  <div class="page-hdr">
-    <h1>👥 Customer Devices</h1>
-    <p>Look up a customer and inspect the <strong>device type</strong> and full <strong>configuration</strong> of every device assigned to them. Data is read live from the truvami API (<span class="mono">v1</span>). Your API key is entered once and stored only on this device.</p>
-  </div>
-
-  <style>
-    /* ── Customer Devices tab (scoped) ── */
-    .cd-keyrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .cd-keystate { font-family:var(--mono); font-size:0.74rem; color:var(--muted); padding:3px 9px; border:1px solid var(--border); border-radius:999px; background:var(--surface-2); }
-    .cd-keystate.ok { color:var(--accent); border-color:var(--accent-glow); background:var(--accent-dim); }
-    .cd-or { display:flex; align-items:center; gap:12px; margin:16px 0; color:var(--muted); font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
-    .cd-or::before, .cd-or::after { content:''; flex:1; height:1px; background:var(--border); }
-    .cd-inline { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
-    .cd-inline .field { flex:1; min-width:220px; margin-bottom:0; }
-    .cd-custlist { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
-    .cd-cust { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); cursor:pointer; transition:all 0.12s; text-align:left; }
-    .cd-cust:hover { border-color:var(--accent-glow); background:var(--surface-3); }
-    .cd-cust-name { font-weight:600; font-size:0.86rem; }
-    .cd-cust-uuid { font-family:var(--mono); font-size:0.7rem; color:var(--muted); }
-    .cd-results { margin-top:18px; display:none; }
-    .cd-results.show { display:block; }
-    .cd-rhdr { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
-    .cd-rhdr h2 { font-size:1rem; font-weight:700; }
-    .cd-rhdr .cd-cust-uuid { font-size:0.72rem; }
-    .cd-chips { display:flex; gap:6px; flex-wrap:wrap; margin:4px 0 14px; }
-    .cd-chip { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; padding:3px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); color:var(--muted); }
-    .cd-chip b { color:var(--text); font-family:var(--mono); }
-    .cd-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
-    .cd-toolbar select, .cd-toolbar input { padding:7px 10px; }
-    .cd-toolbar input { flex:1; min-width:180px; }
-    .cd-count { font-size:0.76rem; color:var(--muted); margin-left:auto; }
-    .cd-tablewrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-lg); }
-    table.cd-table { width:100%; border-collapse:collapse; font-size:0.82rem; min-width:720px; }
-    table.cd-table th { text-align:left; padding:9px 12px; background:var(--surface-2); color:var(--muted); font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); white-space:nowrap; }
-    table.cd-table td { padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
-    table.cd-table tr.cd-row { cursor:pointer; transition:background 0.1s; }
-    table.cd-table tr.cd-row:hover { background:var(--surface-2); }
-    table.cd-table tr.cd-row.open { background:var(--surface-2); }
-    .cd-chev { display:inline-block; transition:transform 0.15s; color:var(--muted); }
-    tr.cd-row.open .cd-chev { transform:rotate(90deg); color:var(--accent); }
-    .cd-label { font-weight:600; }
-    .cd-eui { font-family:var(--mono); font-size:0.76rem; color:var(--accent); }
-    .cd-typebadge { display:inline-block; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:5px; border:1px solid var(--border-hi); background:var(--surface-3); color:var(--text); white-space:nowrap; }
-    .cd-muted { color:var(--muted); }
-    .cd-detail td { background:var(--bg); padding:0; }
-    .cd-detail-inner { padding:16px 18px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; }
-    .cd-sect h4 { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
-    .cd-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
-    .cd-pill { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); }
-    .cd-pill.on  { color:var(--accent); border-color:var(--accent-glow); background:var(--accent-dim); }
-    .cd-pill.off { color:var(--muted); }
-    .cd-kv { width:100%; border-collapse:collapse; font-size:0.8rem; }
-    .cd-kv td { padding:4px 0; border-bottom:1px solid var(--border); vertical-align:top; }
-    .cd-kv tr:last-child td { border-bottom:none; }
-    .cd-kv td:first-child { color:var(--muted); padding-right:12px; white-space:nowrap; }
-    .cd-kv td:last-child { text-align:right; font-family:var(--mono); font-size:0.78rem; }
-    .cd-loading { display:flex; align-items:center; gap:10px; padding:16px; color:var(--muted); font-size:0.84rem; }
-    .cd-cors { margin-top:14px; font-size:0.78rem; color:var(--muted); line-height:1.6; }
-    .cd-cors code { font-family:var(--mono); color:var(--accent); font-size:0.74rem; }
-    @media (max-width:640px){ .cd-detail-inner { grid-template-columns:1fr; } }
-  </style>
-
-  <!-- 1 · API KEY -->
-  <div class="card" style="margin-bottom:14px">
-    <h2>1 · API key</h2>
-    <div class="card-sub">Sent as the <span class="mono">X-Api-Key</span> header. Needs the <span class="mono">customers:read</span> and <span class="mono">devices:read</span> scopes (admin). Stored on this device only — shared with the Device Health tab.</div>
-    <div class="cd-keyrow">
-      <span id="cd-keystate" class="cd-keystate">No API key saved</span>
-      <button class="btn-s" onclick="cdSetKey()">Set / change key</button>
-      <button class="btn-dk" onclick="cdSetBase()">Endpoint</button>
-    </div>
-  </div>
-
-  <!-- 2 · CHOOSE CUSTOMER -->
-  <div class="card">
-    <h2>2 · Choose customer</h2>
-    <div class="card-sub">Search by name, or paste a customer UUID directly.</div>
-
-    <div class="cd-inline">
-      <div class="field">
-        <label for="cd-search">Search customers by name</label>
-        <input type="text" id="cd-search" placeholder="e.g. Acme Logistics" onkeydown="if(event.key==='Enter')cdSearchCustomers()">
-      </div>
-      <button class="btn-p" onclick="cdSearchCustomers()">Search</button>
-    </div>
-    <div id="cd-custlist" class="cd-custlist"></div>
-
-    <div class="cd-or">or</div>
-
-    <div class="cd-inline">
-      <div class="field">
-        <label for="cd-uuid">Customer UUID</label>
-        <input type="text" id="cd-uuid" placeholder="123e4567-e89b-12d3-a456-426614174000" spellcheck="false" onkeydown="if(event.key==='Enter')cdLoadByUuid()">
-      </div>
-      <button class="btn-p" onclick="cdLoadByUuid()">Load devices</button>
-    </div>
-
-    <div id="cd-err" class="err-box"></div>
-  </div>
-
-  <!-- RESULTS -->
-  <div id="cd-results" class="cd-results">
-    <div class="card">
-      <div class="cd-rhdr">
-        <h2 id="cd-cust-name">—</h2>
-        <span id="cd-cust-uuid" class="cd-cust-uuid"></span>
-      </div>
-      <div id="cd-chips" class="cd-chips"></div>
-
-      <div class="cd-toolbar">
-        <select id="cd-typefilter" onchange="cdApplyFilters()"><option value="">All device types</option></select>
-        <input type="text" id="cd-filter" placeholder="Filter by label or DevEUI…" oninput="cdApplyFilters()">
-        <button class="btn-dk" onclick="cdReload()">↻ Refresh</button>
-        <button class="btn-s" onclick="cdExportCsv()">⤓ Export CSV</button>
-        <span id="cd-count" class="cd-count"></span>
-      </div>
-
-      <div id="cd-tablehost"></div>
-    </div>
-  </div>
-</div><!-- /#panel-customers -->
-
-<script>
-/* ══════════════════════════════════════════
-   CUSTOMER DEVICES TAB
-   Reads live from the truvami v1 API.
-   Reuses the API key stored by the Device Health tab
-   (localStorage 'truvami_api_key' + optional 'truvami_api_base').
-══════════════════════════════════════════ */
-(function(){
-  var CD_KEY_STORE  = 'truvami_api_key';
-  var CD_BASE_STORE = 'truvami_api_base';
-  var CD_DEFAULT    = 'https://api.truvami.com/v1';
-  var CD_PAGE_LIMIT = 100;   // max allowed by the API
-  var CD_MAX_PAGES  = 100;   // safety cap (10k devices)
-
-  var cdState = { uuid:null, name:null, devices:[], loading:false };
-
-  /* ── helpers ── */
-  function cdEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function cdGetKey(){ try { return localStorage.getItem(CD_KEY_STORE) || ''; } catch(e){ return ''; } }
-  function cdGetBase(){ var b=''; try{ b=localStorage.getItem(CD_BASE_STORE)||''; }catch(e){} return (b||CD_DEFAULT).replace(/\/+$/,''); }
-  function cdIsProxy(){ return cdGetBase() !== CD_DEFAULT; }
-  function cdMask(k){ return !k ? '' : (k.length<=12 ? k.slice(0,4)+'…' : k.slice(0,9)+'…'+k.slice(-4)); }
-
-  function cdFmtAge(ms){
-    if(ms==null) return '';
-    if(ms<0) ms=0;
-    var mins=Math.round(ms/60000);
-    if(mins<60) return mins+' min ago';
-    var h=Math.floor(mins/60), mm=mins%60;
-    if(h<48) return h+'h '+mm+'m ago';
-    return Math.floor(h/24)+' days ago';
-  }
-  function cdFmtTime(iso){
-    if(!iso) return '—';
-    var d=new Date(iso);
-    if(isNaN(d)) return cdEsc(iso);
-    var age=cdFmtAge(Date.now()-d.getTime());
-    return d.toLocaleString() + (age ? '  ·  '+age : '');
-  }
-
-  /* ── key / endpoint management ── */
-  function cdRefreshKeyState(){
-    var el=document.getElementById('cd-keystate');
-    if(!el) return;
-    var k=cdGetKey();
-    var txt = k ? ('key '+cdMask(k)) : 'No API key saved';
-    txt += ' · ' + (cdIsProxy() ? 'proxy endpoint' : 'direct API');
-    el.textContent = txt;
-    el.className = 'cd-keystate' + (k ? ' ok' : '');
-  }
-  window.cdSetKey = function(){
-    // Reuse the Health-tab prompt when present so both tabs stay in sync.
-    if(typeof window.dhPromptApiKey === 'function'){
-      window.dhPromptApiKey(true);
-    } else {
-      var cur=cdGetKey();
-      var v=window.prompt('Enter your truvami API key\n\nStored only on this device, sent as the X-Api-Key header.\nRequired read scopes:\n  • customers:read\n  • devices:read', cur||'');
-      if(v!==null){ try{ localStorage.setItem(CD_KEY_STORE, v.trim()); }catch(e){} }
-    }
-    cdRefreshKeyState();
-    return cdGetKey();
-  };
-  window.cdSetBase = function(){
-    if(typeof window.dhPromptApiBase === 'function'){ window.dhPromptApiBase(); cdRefreshKeyState(); return; }
-    var cur=cdGetBase();
-    var v=window.prompt('API endpoint base URL\n\nDefault:\n'+CD_DEFAULT+'\n\nOr paste your own CORS proxy base URL to run from any origin.\nLeave blank to reset to default.', cur);
-    if(v===null) return;
-    v=v.trim().replace(/\/+$/,'');
-    try{ localStorage.setItem(CD_BASE_STORE, v); }catch(e){}
-    cdRefreshKeyState();
-  };
-
-  /* ── fetch wrapper ── */
-  function cdFetch(path){
-    var key=cdGetKey();
-    var headers={ 'Accept':'application/json' };
-    if(key) headers['X-Api-Key']=key;
-    return fetch(cdGetBase()+path, { headers:headers }).then(function(r){
-      return r.text().then(function(t){
-        var j=null; try{ j=JSON.parse(t); }catch(e){}
-        return { status:r.status, ok:r.ok, json:j, text:t };
-      });
-    }, function(e){ return { network:true, error:String(e) }; });
-  }
-
-  function cdShowErr(msg, isCors){
-    var el=document.getElementById('cd-err');
-    if(!el) return;
-    var html = msg;
-    if(isCors){
-      html += '<div class="cd-cors">The browser blocked the request. <code>api.truvami.com</code> only sends CORS headers to allow-listed truvami origins, so a page served from elsewhere (or <code>file://</code>) cannot call it directly.<br>Fix: host this tool on an allow-listed truvami origin, or tap <b>Endpoint</b> and point it at your own CORS proxy.</div>';
-    }
-    el.innerHTML = html;
-    el.style.display = 'block';
-  }
-  function cdClearErr(){ var el=document.getElementById('cd-err'); if(el){ el.style.display='none'; el.innerHTML=''; } }
-
-  function cdErrorFromResp(r, ctx){
-    if(r.network) return { msg:'<b>Could not reach the API.</b> '+cdEsc(ctx||''), cors:true };
-    if(r.status===401) return { msg:'<b>API key rejected (401).</b> Tap “Set / change key” and enter a valid key.' };
-    if(r.status===403) return { msg:'<b>Forbidden (403).</b> This key is missing a required scope (needs customers:read + devices:read, admin).' };
-    if(r.status===404) return { msg:'<b>Not found (404).</b> '+cdEsc(ctx||'')+' Check the customer UUID.' };
-    var apiMsg = (r.json && (r.json.message || (r.json.errors && r.json.errors[0] && r.json.errors[0].message))) || ('HTTP '+r.status);
-    return { msg:'<b>Request failed.</b> '+cdEsc(apiMsg) };
-  }
-
-  function cdEnsureKey(){
-    if(cdGetKey() || cdIsProxy()) return true;
-    cdSetKey();
-    return !!cdGetKey();
-  }
-
-  /* ── customer search ── */
-  window.cdSearchCustomers = function(){
-    cdClearErr();
-    var q=(document.getElementById('cd-search').value||'').trim();
-    var list=document.getElementById('cd-custlist');
-    if(!cdEnsureKey()){ cdShowErr('<b>An API key is required.</b> Tap “Set / change key” above.'); return; }
-    list.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Searching customers…</div>';
-    var path='/customers?limit=25' + (q ? '&search='+encodeURIComponent(q) : '');
-    cdFetch(path).then(function(r){
-      if(!r.ok){ list.innerHTML=''; var e=cdErrorFromResp(r,'Listing customers requires an admin key.'); cdShowErr(e.msg, e.cors); return; }
-      var data=(r.json && r.json.data) || [];
-      if(!data.length){ list.innerHTML='<div class="cd-loading">No customers matched “'+cdEsc(q)+'”.</div>'; return; }
-      list.innerHTML = data.map(function(c){
-        return '<button class="cd-cust" onclick="cdPickCustomer('+"'"+cdEsc(c.uuid)+"','"+cdEsc((c.name||'').replace(/'/g,"\\'"))+"'"+')">'+
-               '<span class="cd-cust-name">'+cdEsc(c.name||'(unnamed)')+'</span>'+
-               '<span class="cd-cust-uuid">'+cdEsc(c.uuid)+'</span></button>';
-      }).join('');
-    });
-  };
-
-  window.cdPickCustomer = function(uuid, name){
-    document.getElementById('cd-custlist').innerHTML='';
-    cdLoadDevices(uuid, name);
-  };
-
-  window.cdLoadByUuid = function(){
-    cdClearErr();
-    var uuid=(document.getElementById('cd-uuid').value||'').trim();
-    if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uuid)){
-      cdShowErr('<b>That doesn’t look like a UUID.</b> Expected e.g. 123e4567-e89b-12d3-a456-426614174000.'); return;
-    }
-    if(!cdEnsureKey()){ cdShowErr('<b>An API key is required.</b> Tap “Set / change key” above.'); return; }
-    cdLoadDevices(uuid, null);
-  };
-
-  window.cdReload = function(){ if(cdState.uuid) cdLoadDevices(cdState.uuid, cdState.name); };
-
-  /* ── load all devices for a customer (paginated) ── */
-  function cdLoadDevices(uuid, name){
-    cdClearErr();
-    cdState.uuid=uuid; cdState.name=name; cdState.devices=[]; cdState.loading=true;
-    var results=document.getElementById('cd-results');
-    results.classList.add('show');
-    document.getElementById('cd-cust-name').textContent = name || 'Customer';
-    document.getElementById('cd-cust-uuid').textContent = uuid;
-    document.getElementById('cd-chips').innerHTML='';
-    document.getElementById('cd-typefilter').innerHTML='<option value="">All device types</option>';
-    document.getElementById('cd-filter').value='';
-    document.getElementById('cd-count').textContent='';
-    var host=document.getElementById('cd-tablehost');
-    host.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Loading devices…</div>';
-    try { results.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){}
-
-    var acc=[];
-    function loadPage(page){
-      var path='/customers/'+encodeURIComponent(uuid)+'/devices?page='+page+'&limit='+CD_PAGE_LIMIT;
-      return cdFetch(path).then(function(r){
-        if(!r.ok){ throw cdErrorFromResp(r, 'Fetching devices for this customer.'); }
-        var data=(r.json && r.json.data) || [];
-        acc=acc.concat(data);
-        var meta=(r.json && r.json.metadata) || {};
-        var totalPages = meta.totalPages || 1;
-        if(page<totalPages && page<CD_MAX_PAGES && data.length>0){
-          host.innerHTML='<div class="cd-loading"><span class="dh-spinner"></span>Loading devices… '+acc.length+' of '+(meta.total||'?')+'</div>';
-          return loadPage(page+1);
-        }
-        return acc;
-      });
-    }
-
-    loadPage(1).then(function(devices){
-      cdState.devices=devices; cdState.loading=false;
-      cdRenderSummary();
-      cdRenderDevices();
-    }).catch(function(e){
-      cdState.loading=false;
-      host.innerHTML='';
-      if(e && e.msg) cdShowErr(e.msg, e.cors);
-      else cdShowErr('<b>Unexpected error.</b> '+cdEsc(String(e && e.error || e)));
-    });
-  }
-
-  /* ── summary chips + type filter ── */
-  function cdRenderSummary(){
-    var counts={};
-    cdState.devices.forEach(function(d){
-      var t=(d.deviceType && d.deviceType.name) || 'unknown';
-      counts[t]=(counts[t]||0)+1;
-    });
-    var chips=document.getElementById('cd-chips');
-    var total=cdState.devices.length;
-    var html='<span class="cd-chip">Total <b>'+total+'</b></span>';
-    var types=Object.keys(counts).sort();
-    html += types.map(function(t){ return '<span class="cd-chip">'+cdEsc(t)+' <b>'+counts[t]+'</b></span>'; }).join('');
-    chips.innerHTML=html;
-
-    var sel=document.getElementById('cd-typefilter');
-    sel.innerHTML='<option value="">All device types</option>' +
-      types.map(function(t){ return '<option value="'+cdEsc(t)+'">'+cdEsc(t)+' ('+counts[t]+')</option>'; }).join('');
-  }
-
-  /* ── config field definitions ── */
-  var CD_BOOL_FIELDS = [
-    {k:'ble', label:'BLE'}, {k:'gps', label:'GPS'}, {k:'wifi', label:'WiFi'},
-    {k:'rotationStatusInverted', label:'Rotation inverted'},
-    {k:'rotationStatusConfirmed', label:'Rotation confirmed'}
-  ];
-  var CD_NUM_FIELDS = [
-    {k:'movingInterval', label:'Moving interval', unit:'s'},
-    {k:'steadyInterval', label:'Steady interval', unit:'s'},
-    {k:'configInterval', label:'Config interval', unit:'s'},
-    {k:'gpsTimeout', label:'GPS timeout', unit:'s'},
-    {k:'batteryInterval', label:'Battery interval', unit:'s'},
-    {k:'rejoinInterval', label:'Rejoin interval', unit:'s'},
-    {k:'accelerometerThreshold', label:'Accel. threshold', unit:''},
-    {k:'accelerometerDelay', label:'Accel. delay', unit:''},
-    {k:'lowLightThreshold', label:'Low light threshold', unit:''},
-    {k:'highLightThreshold', label:'High light threshold', unit:''},
-    {k:'batchSize', label:'Batch size', unit:''},
-    {k:'bufferSize', label:'Buffer size', unit:''}
-  ];
-  var CD_CONFIG_KEYS = CD_BOOL_FIELDS.map(function(f){return f.k;}).concat(CD_NUM_FIELDS.map(function(f){return f.k;}));
-
-  function cdBoolCell(v){
-    if(v===true) return '<span class="cd-pill on">✓ '+'</span>';
-    if(v===false) return '<span class="cd-pill off">✗ '+'</span>';
-    return '<span class="cd-pill off">—</span>';
-  }
-  function cdNum(v, unit){
-    if(v==null) return '—';
-    return v + (unit ? (' '+unit) : '');
-  }
-
-  /* ── device table ── */
-  function cdRenderDevices(){
-    var host=document.getElementById('cd-tablehost');
-    var typeF=(document.getElementById('cd-typefilter').value||'');
-    var txtF=((document.getElementById('cd-filter').value||'').trim().toLowerCase());
-
-    var rows=cdState.devices.filter(function(d){
-      var t=(d.deviceType && d.deviceType.name) || 'unknown';
-      if(typeF && t!==typeF) return false;
-      if(txtF){
-        var hay=((d.label||'')+' '+(d.devEui||'')+' '+t).toLowerCase();
-        if(hay.indexOf(txtF)<0) return false;
-      }
-      return true;
-    });
-
-    document.getElementById('cd-count').textContent = rows.length+' of '+cdState.devices.length+' shown';
-
-    if(!cdState.devices.length){ host.innerHTML='<div class="cd-loading">This customer has no devices.</div>'; return; }
-    if(!rows.length){ host.innerHTML='<div class="cd-loading">No devices match the current filter.</div>'; return; }
-
-    var html='<div class="cd-tablewrap"><table class="cd-table"><thead><tr>'+
-      '<th style="width:24px"></th><th>Label</th><th>DevEUI</th><th>Device type</th><th>FW</th><th>HW</th><th>Last uplink</th><th>Last position</th></tr></thead><tbody>';
-
-    rows.forEach(function(d){
-      var idx=cdState.devices.indexOf(d);
-      var t=(d.deviceType && d.deviceType.name) || 'unknown';
-      var lu=d.lastUplink;
-      var luTxt = lu ? ('p'+(lu.port==null?'?':lu.port)+' · '+cdFmtTime(lu.receivedAt)) : '<span class="cd-muted">never</span>';
-      var lp=d.lastPosition;
-      var lpTxt;
-      if(lp && lp.latitude!=null && lp.longitude!=null){
-        var src=lp.source?(lp.source.toUpperCase()+' · '):'';
-        var age=lp.capturedAt?cdFmtAge(Date.now()-new Date(lp.capturedAt).getTime()):'';
-        lpTxt=cdEsc(src)+'<span class="cd-eui">'+lp.latitude.toFixed(4)+', '+lp.longitude.toFixed(4)+'</span>'+(age?' <span class="cd-muted">· '+cdEsc(age)+'</span>':'');
-      } else {
-        lpTxt='<span class="cd-muted">no fix</span>';
-      }
-      html += '<tr class="cd-row" id="cd-row-'+idx+'" onclick="cdToggleRow('+idx+')">'+
-        '<td><span class="cd-chev">▸</span></td>'+
-        '<td class="cd-label">'+(d.label?cdEsc(d.label):'<span class="cd-muted">(no label)</span>')+'</td>'+
-        '<td class="cd-eui">'+cdEsc(d.devEui||'—')+'</td>'+
-        '<td><span class="cd-typebadge">'+cdEsc(t)+'</span></td>'+
-        '<td>'+cdEsc(d.firmwareVersion||'—')+'</td>'+
-        '<td>'+cdEsc(d.hardwareVersion||'—')+'</td>'+
-        '<td>'+luTxt+'</td>'+
-        '<td>'+lpTxt+'</td></tr>';
-      html += '<tr class="cd-detail" id="cd-detail-'+idx+'" style="display:none"><td colspan="8">'+cdDetailHtml(d)+'</td></tr>';
-    });
-    html+='</tbody></table></div>';
-    host.innerHTML=html;
-  }
-
-  function cdDetailHtml(d){
-    var cfg=d.config||{};
-    // booleans
-    var pills=CD_BOOL_FIELDS.map(function(f){
-      var v=cfg[f.k];
-      var cls = v===true ? 'on' : 'off';
-      var mark = v===true ? '✓' : (v===false ? '✗' : '—');
-      return '<span class="cd-pill '+cls+'">'+mark+' '+cdEsc(f.label)+'</span>';
-    }).join('');
-    // numeric grid
-    var numRows=CD_NUM_FIELDS.map(function(f){
-      return '<tr><td>'+cdEsc(f.label)+'</td><td>'+cdEsc(cdNum(cfg[f.k], f.unit))+'</td></tr>';
-    }).join('');
-
-    // device meta
-    var groups=(d.groups && d.groups.length) ? d.groups.length+' group'+(d.groups.length>1?'s':'') : 'none';
-    var metaRows=''+
-      '<tr><td>Firmware</td><td>'+cdEsc(d.firmwareVersion||'—')+'</td></tr>'+
-      '<tr><td>Hardware</td><td>'+cdEsc(d.hardwareVersion||'—')+'</td></tr>'+
-      '<tr><td>Alerts enabled</td><td>'+(d.alertsEnabled===false?'no':(d.alertsEnabled===true?'yes':'—'))+'</td></tr>'+
-      '<tr><td>Groups</td><td>'+cdEsc(groups)+'</td></tr>'+
-      '<tr><td>Created</td><td>'+cdEsc(cdFmtTime(d.createdAt))+'</td></tr>'+
-      '<tr><td>Updated</td><td>'+cdEsc(cdFmtTime(d.updatedAt))+'</td></tr>';
-
-    // last uplink
-    var lu=d.lastUplink;
-    var luSect;
-    if(lu){
-      luSect='<table class="cd-kv">'+
-        '<tr><td>Port</td><td>'+(lu.port==null?'—':lu.port)+'</td></tr>'+
-        '<tr><td>Received</td><td>'+cdEsc(cdFmtTime(lu.receivedAt))+'</td></tr>'+
-        '<tr><td>Spreading factor</td><td>'+(lu.spreadingFactor==null?'—':('SF'+lu.spreadingFactor))+'</td></tr>'+
-        '<tr><td>Avg RSSI</td><td>'+(lu.averageRssi==null?'—':lu.averageRssi+' dBm')+'</td></tr>'+
-        '<tr><td>Avg SNR</td><td>'+(lu.averageSnr==null?'—':lu.averageSnr+' dB')+'</td></tr>'+
-        '<tr><td>Confirmed</td><td>'+(lu.confirmed===true?'yes':(lu.confirmed===false?'no':'—'))+'</td></tr>'+
-        '</table>';
-    } else {
-      luSect='<div class="cd-muted" style="font-size:0.82rem">No uplink on record.</div>';
-    }
-
-    // last position
-    var lp=d.lastPosition;
-    var lpSect;
-    if(lp && (lp.latitude!=null || lp.longitude!=null)){
-      var lat=lp.latitude, lon=lp.longitude;
-      var hasCoords=(lat!=null && lon!=null);
-      var coordTxt = hasCoords ? (lat.toFixed(5)+', '+lon.toFixed(5)) : '—';
-      var mapCell = hasCoords
-        ? '<a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" rel="noopener" class="cd-eui" style="text-decoration:underline">'+cdEsc(coordTxt)+' ↗</a>'
-        : '—';
-      lpSect='<table class="cd-kv">'+
-        '<tr><td>Coordinates</td><td>'+mapCell+'</td></tr>'+
-        '<tr><td>Source</td><td>'+(lp.source?cdEsc(lp.source.toUpperCase()):'—')+'</td></tr>'+
-        '<tr><td>Accuracy</td><td>'+(lp.accuracy==null?'—':lp.accuracy+' m')+'</td></tr>'+
-        '<tr><td>Altitude</td><td>'+(lp.altitude==null?'—':lp.altitude+' m')+'</td></tr>'+
-        '<tr><td>Satellites</td><td>'+(lp.satellites==null?'—':lp.satellites)+'</td></tr>'+
-        '<tr><td>Moving</td><td>'+(lp.moving===true?'yes':(lp.moving===false?'no':'—'))+'</td></tr>'+
-        '<tr><td>Captured</td><td>'+cdEsc(cdFmtTime(lp.capturedAt))+'</td></tr>'+
-        '</table>';
-    } else {
-      lpSect='<div class="cd-muted" style="font-size:0.82rem">No position on record.</div>';
-    }
-
-    return '<div class="cd-detail-inner">'+
-      '<div class="cd-sect"><h4>Configuration</h4><div class="cd-pills">'+pills+'</div>'+
-        '<table class="cd-kv">'+numRows+'</table></div>'+
-      '<div class="cd-sect"><h4>Device</h4><table class="cd-kv">'+metaRows+'</table></div>'+
-      '<div class="cd-sect"><h4>Last uplink</h4>'+luSect+'</div>'+
-      '<div class="cd-sect"><h4>Last position</h4>'+lpSect+'</div>'+
-    '</div>';
-  }
-
-  window.cdToggleRow = function(idx){
-    var row=document.getElementById('cd-row-'+idx);
-    var det=document.getElementById('cd-detail-'+idx);
-    if(!row||!det) return;
-    var open=det.style.display!=='none';
-    det.style.display = open ? 'none' : '';
-    row.classList.toggle('open', !open);
-  };
-
-  window.cdApplyFilters = function(){ cdRenderDevices(); };
-
-  /* ── CSV export ── */
-  window.cdExportCsv = function(){
-    if(!cdState.devices.length){ return; }
-    var head=['label','devEui','deviceType','firmwareVersion','hardwareVersion','lastUplinkPort','lastUplinkReceivedAt',
-              'lastPositionLat','lastPositionLon','lastPositionSource','lastPositionAccuracyM','lastPositionCapturedAt',
-              'alertsEnabled','groups'].concat(CD_CONFIG_KEYS);
-    function cell(v){
-      if(v==null) return '';
-      var s=String(v);
-      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
-    }
-    var lines=[head.join(',')];
-    cdState.devices.forEach(function(d){
-      var cfg=d.config||{};
-      var lu=d.lastUplink||{};
-      var lp=d.lastPosition||{};
-      var base=[ d.label, d.devEui, (d.deviceType&&d.deviceType.name), d.firmwareVersion, d.hardwareVersion,
-                 (lu.port==null?'':lu.port), lu.receivedAt||'',
-                 (lp.latitude==null?'':lp.latitude), (lp.longitude==null?'':lp.longitude), lp.source||'',
-                 (lp.accuracy==null?'':lp.accuracy), lp.capturedAt||'',
-                 d.alertsEnabled, (d.groups?d.groups.join('|'):'') ];
-      var conf=CD_CONFIG_KEYS.map(function(k){ return cfg[k]; });
-      lines.push(base.concat(conf).map(cell).join(','));
-    });
-    var csv=lines.join('\n');
-    var blob=new Blob([csv],{type:'text/csv'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    var nm=(cdState.name||cdState.uuid||'customer').replace(/[^a-z0-9]+/gi,'_').toLowerCase();
-    a.href=url; a.download='truvami_devices_'+nm+'.csv';
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
-  };
-
-  /* ── init (called by selectMode when the tab opens) ── */
-  window.cdInit = function(){ cdRefreshKeyState(); };
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', cdRefreshKeyState);
-  else cdRefreshKeyState();
-})();
-</script>
 
 
 <script>
@@ -2316,17 +1538,15 @@
 function selectMode(mode) {
   const isEnergy    = mode === 'energy';
   const isHealth    = mode === 'health';
-  const isCustomers = mode === 'customers';
-  const isConfig    = !isEnergy && !isHealth && !isCustomers;
+  const isConfig    = !isEnergy && !isHealth;
 
-  // Stop QR scanner if switching away from health tab
+  // Stop QR scanner if switching away from the BLE Beacon tab
   if (!isHealth) { if (typeof dhStopScan === 'function') dhStopScan(); }
 
   // Toggle nav button styles
   const navConfig    = document.getElementById('nav-config');
   const navEnergy    = document.getElementById('nav-energy');
   const navHealth    = document.getElementById('nav-health');
-  const navCustomers = document.getElementById('nav-customers');
 
   function setNav(el, active) {
     if (!el) return;
@@ -2337,7 +1557,6 @@ function selectMode(mode) {
   setNav(navConfig, isConfig);
   setNav(navEnergy, isEnergy);
   setNav(navHealth, isHealth);
-  setNav(navCustomers, isCustomers);
 
   // Show/hide device selector bar
   const devBar = document.querySelector('.device-selector-wrap');
@@ -2351,10 +1570,6 @@ function selectMode(mode) {
   } else if (isHealth) {
     const hp = document.getElementById('panel-health');
     if (hp) hp.classList.add('active');
-  } else if (isCustomers) {
-    const cp = document.getElementById('panel-customers');
-    if (cp) cp.classList.add('active');
-    if (typeof cdInit === 'function') cdInit();
   } else {
     const sel = document.getElementById('deviceSelect');
     const id  = sel ? sel.value : 'tagsl';
@@ -5564,22 +4779,30 @@ window.ebLoadConfig = ebLoadConfig;
 })();
 </script>
 
-<!-- ZXing: professional-grade QR engine (same core as many native scanning apps) -->
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js" onerror="window._zxingLoadFailed=true"></script>
+
+<!-- jsQR: robust QR decoder with built-in inverted-code support (reads white-on-teal beacon labels) -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" onerror="window._jsqrLoadFailed=true"></script>
 <script>
 (function () {
   'use strict';
 
-  const GRAFANA_BASE   = 'https://grafana.truvami.com/d/kakhzgc/ops-dashboard-devices?orgId=1&from=now-3h&to=now&timezone=browser&var-customer=$__all&var-groups=$__all&var-Filters=&var-deviceSearch=';
-  const DASHBOARD_BASE = 'https://dashboard.truvami.com/trackers/';
-  const LNS_BASE       = 'https://portal.lpn.swisscom.ch/tpw/#/devices/list?query=';
-  const DEVEUI_RE      = /([0-9A-Fa-f]{2}[:\-]?){7}[0-9A-Fa-f]{2}/;
-  const SHORT_PREFIX   = '10CE45FFFE0';
+  let stream   = null;
+  let scanning = false;
+  let rafId    = null;
+  let decoding = false;
+  let lastTs   = 0;
+  let torchOn  = false;
+  let userZoom = 1;
 
-  let scanControls = null;
-  let torchOn      = false;
-  let userZoom     = 1;
-  let codeReader   = null;
+  /* Offscreen canvas used to grab & preprocess frames */
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+
+  /* Optional native fast-path, only used when jsQR is unavailable */
+  let barcodeDetector = null;
+  try {
+    if ('BarcodeDetector' in window) barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+  } catch (_) { barcodeDetector = null; }
 
   /* ── SN → MAC (byte-reversal, no BigInt for iOS compat) ── */
   function serialToMac(serialStr) {
@@ -5605,29 +4828,23 @@ window.ebLoadConfig = ebLoadConfig;
     if (err) { err.textContent = isErr ? msg : ''; err.classList.toggle('show', !!isErr); }
   }
 
-  function setBtnStopped() {
-    const btn = document.getElementById('dh-scan-btn');
-    if (!btn) return;
-    btn.innerHTML =
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">' +
-      '<path d="M2 7V4a1 1 0 0 1 1-1h3M16 3h3a1 1 0 0 1 1 1v3M22 17v3a1 1 0 0 1-1 1h-3M8 21H5a1 1 0 0 1-1-1v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
-      '<rect x="7" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
-      '<rect x="13" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
-      '<rect x="7" y="13" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
-      '<path d="M13 13h1M16 13h1M13 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Scan QR / Barcode';
-  }
+  const SCAN_SVG =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">' +
+    '<path d="M2 7V4a1 1 0 0 1 1-1h3M16 3h3a1 1 0 0 1 1 1v3M22 17v3a1 1 0 0 1-1 1h-3M8 21H5a1 1 0 0 1-1-1v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<rect x="7" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
+    '<rect x="13" y="7" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
+    '<rect x="7" y="13" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>' +
+    '<path d="M13 13h1M16 13h1M13 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Scan QR code';
 
+  function setBtnStopped()  { var b = document.getElementById('dh-scan-btn'); if (b) b.innerHTML = SCAN_SVG; }
+  function setBtnScanning() { var b = document.getElementById('dh-scan-btn'); if (b) b.innerHTML = 'Stop Scanning'; }
+
+  /* ── Serial → MAC result rendering ── */
   function applyBeaconSerial(raw) {
     const digits = (raw || '').replace(/[^0-9]/g, '');
     if (!digits) return false;
     var result;
     try { result = serialToMac(digits); } catch (e) { return false; }
-    // Hide DevEUI result, show beacon result
-    const devEuiDisp = document.getElementById('dh-deveui-display');
-    if (devEuiDisp) devEuiDisp.classList.remove('show');
-    ['dh-open-btn','dh-dashboard-btn','dh-lns-btn','dh-hc-card'].forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.classList.remove('show');
-    });
     document.getElementById('dh-beacon-sn').textContent  = digits;
     document.getElementById('dh-beacon-mac').textContent = result.mac;
     document.getElementById('dh-beacon-hex').textContent = result.hex;
@@ -5637,49 +4854,11 @@ window.ebLoadConfig = ebLoadConfig;
     return true;
   }
 
-  function applyDevEUI(raw) {
-    const m     = (raw || '').match(DEVEUI_RE);
-    const clean = (m ? m[0] : raw.trim()).replace(/[:\-\s]/g, '').toUpperCase();
-    if (!/^[0-9A-F]{16}$/.test(clean)) return false;
-
-    // Hide beacon result, show DevEUI result
-    const beaconDisp = document.getElementById('dh-beacon-display');
-    if (beaconDisp) beaconDisp.classList.remove('show');
-    const copyBtn = document.getElementById('dh-beacon-copy-btn');
-    if (copyBtn) copyBtn.classList.remove('show');
-
-    const display = document.getElementById('dh-deveui-display');
-    const val     = document.getElementById('dh-deveui-value');
-    if (display && val) { val.textContent = clean; display.classList.add('show'); }
-
-    const grafBtn = document.getElementById('dh-open-btn');
-    if (grafBtn) { grafBtn.href = GRAFANA_BASE + encodeURIComponent(clean); grafBtn.classList.add('show'); }
-    const dashBtn = document.getElementById('dh-dashboard-btn');
-    if (dashBtn) { dashBtn.href = DASHBOARD_BASE + encodeURIComponent(clean); dashBtn.classList.add('show'); }
-    const lnsBtn = document.getElementById('dh-lns-btn');
-    if (lnsBtn) { lnsBtn.href = LNS_BASE + encodeURIComponent(clean) + '%20&tabId=list'; lnsBtn.classList.add('show'); }
-
-    const hcCard = document.getElementById('dh-hc-card');
-    if (hcCard) { hcCard.classList.add('show'); window.__dhExpectedDevEui = clean; }
-
-    setStatus('DevEUI detected — tap a button below to open the dashboard.');
-    return true;
-  }
-
-  /* Try DevEUI first, then beacon serial */
-  function applyScanned(raw) {
-    if (applyDevEUI(raw)) return true;
-    if (applyBeaconSerial(raw)) return true;
-    return false;
-  }
-
-  window.dhApplyManual = function () {
-    const inp = document.getElementById('dh-manual-input');
-    if (inp && inp.value.trim()) applyDevEUI(inp.value.trim());
-  };
-
   window.dhApplyBeaconSerial = function (val) {
-    if ((val || '').trim()) applyBeaconSerial(val.trim());
+    if ((val || '').trim()) {
+      if (!applyBeaconSerial(val.trim()))
+        setStatus('That serial isn\u2019t a valid 6-byte beacon serial number.', true);
+    }
   };
 
   window.dhCopyBeaconMac = function () {
@@ -5687,65 +4866,48 @@ window.ebLoadConfig = ebLoadConfig;
     const mac   = macEl ? macEl.textContent : '';
     if (!mac || mac === '—') return;
     const statusEl = document.getElementById('dh-beacon-copy-status');
-    navigator.clipboard.writeText(mac).then(function () {
-      if (statusEl) { statusEl.textContent = 'Copied!'; statusEl.className = 'copy-status suc vis'; setTimeout(function(){ statusEl.classList.remove('vis'); }, 2500); }
-    }).catch(function () {
-      if (statusEl) { statusEl.textContent = 'Copy failed'; statusEl.className = 'copy-status err vis'; setTimeout(function(){ statusEl.classList.remove('vis'); }, 2500); }
-    });
+    function done(msg, cls){ if (statusEl) { statusEl.textContent = msg; statusEl.className = 'copy-status ' + cls + ' vis'; setTimeout(function(){ statusEl.classList.remove('vis'); }, 2500); } }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(mac).then(function(){ done('Copied!', 'suc'); }).catch(function(){ done('Copy failed', 'err'); });
+    } else { done('Copy failed', 'err'); }
   };
 
-  window.dhShortPreview = function () {
-    const inp = document.getElementById('dh-short-input');
-    const pre = document.getElementById('dh-short-preview');
-    if (!inp || !pre) return;
-    const suffix = inp.value.toUpperCase();
-    if (!suffix) { pre.textContent = ''; return; }
-    pre.textContent = '> ' + SHORT_PREFIX + suffix.padEnd(5, '_');
-    pre.style.color = suffix.length === 5 ? 'var(--accent)' : 'var(--muted)';
-  };
-
-  window.dhApplyShort = function () {
-    const inp    = document.getElementById('dh-short-input');
-    const pre    = document.getElementById('dh-short-preview');
-    const suffix = (inp ? inp.value : '').toUpperCase().replace(/[^0-9A-F]/g, '');
-    if (suffix.length !== 5) {
-      if (pre) { pre.textContent = 'Enter exactly 5 hex characters.'; pre.style.color = 'var(--danger)'; }
-      return;
-    }
-    applyDevEUI(SHORT_PREFIX + suffix);
-  };
-
+  /* ── Zoom: digital via track constraints; CSS transform is display-only ── */
   window.dhSetZoom = function (z) {
     userZoom = z;
-    [3, 4, 5].forEach(function(n) {
+    [3, 4, 5].forEach(function (n) {
       var btn = document.getElementById('dh-zoom-' + n);
       if (btn) btn.classList.toggle('active', n === z);
     });
     const video = document.getElementById('dh-video');
-    if (video) video.style.transform = z === 1 ? '' : 'scale(' + z + ')';
     if (video && video.srcObject) {
       const track = video.srcObject.getVideoTracks()[0];
-      if (track) {
-        const caps = track.getCapabilities ? track.getCapabilities() : {};
-        if (caps.zoom) {
+      if (track && track.getCapabilities) {
+        const caps = track.getCapabilities();
+        if (caps && caps.zoom) {
           const nz = caps.zoom.min + (caps.zoom.max - caps.zoom.min) * ((z - 1) / 7);
           track.applyConstraints({ advanced: [{ zoom: Math.max(caps.zoom.min, Math.min(caps.zoom.max, nz)) }] }).catch(function(){});
+          if (video) video.style.transform = '';
+          return;
         }
       }
     }
+    /* Fallback: CSS magnify the preview. Decoding still uses the full-resolution
+       sensor frame, so this is purely a visual aid. */
+    if (video) video.style.transform = z === 1 ? '' : 'scale(' + z + ')';
   };
 
   window.dhToggleTorch = async function () {
-    const video  = document.getElementById('dh-video');
-    const stream = video && video.srcObject;
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
+    const video   = document.getElementById('dh-video');
+    const strm    = video && video.srcObject;
+    if (!strm) return;
+    const track = strm.getVideoTracks()[0];
     if (!track) return;
     torchOn = !torchOn;
     try {
       await track.applyConstraints({ advanced: [{ torch: torchOn }] });
       const btn = document.getElementById('dh-torch-btn');
-      if (btn) { btn.textContent = torchOn ? 'Torch ON' : 'Torch'; btn.classList.toggle('on', torchOn); }
+      if (btn) { btn.textContent = torchOn ? 'Torch ON' : '🔦 Torch'; btn.classList.toggle('on', torchOn); }
     } catch (_) {
       torchOn = false;
       const btn = document.getElementById('dh-torch-btn');
@@ -5753,95 +4915,138 @@ window.ebLoadConfig = ebLoadConfig;
     }
   };
 
+  /* ── Decode the current video frame.
+        Center-crops to the region under the scan frame, then runs jsQR trying
+        BOTH normal AND inverted polarity. The beacon QR is printed light-on-teal
+        (inverse), which a standard dark-on-light reader never detects — this is
+        the fix for codes that scanned on the old blue labels but not on the
+        green/teal plastic. ── */
+  async function decodeCurrentFrame() {
+    const video = document.getElementById('dh-video');
+    if (!video || video.readyState < 2 || !video.videoWidth) return null;
+
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const side = Math.floor(Math.min(vw, vh) * 0.92);   // largest ~centered square
+    const sx = Math.floor((vw - side) / 2);
+    const sy = Math.floor((vh - side) / 2);
+    const target = Math.min(720, side);                 // enough detail, cheap to scan
+    canvas.width = target; canvas.height = target;
+    ctx.drawImage(video, sx, sy, side, side, 0, 0, target, target);
+
+    let img;
+    try { img = ctx.getImageData(0, 0, target, target); } catch (_) { return null; }
+
+    /* Primary: jsQR reads inverted codes directly via attemptBoth */
+    if (typeof jsQR === 'function') {
+      const r = jsQR(img.data, target, target, { inversionAttempts: 'attemptBoth' });
+      if (r && r.data) return r.data;
+      return null;
+    }
+
+    /* Fallback: native BarcodeDetector — try normal, then a manually inverted copy */
+    if (barcodeDetector) {
+      try {
+        let codes = await barcodeDetector.detect(canvas);
+        if (codes && codes.length) return codes[0].rawValue;
+      } catch (_) {}
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) { d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2]; }
+      ctx.putImageData(img, 0, 0);
+      try {
+        let codes = await barcodeDetector.detect(canvas);
+        if (codes && codes.length) return codes[0].rawValue;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async function scanTick() {
+    if (!scanning) return;
+    const now = (window.performance && performance.now) ? performance.now() : Date.now();
+    if (!decoding && now - lastTs > 100) {
+      lastTs = now; decoding = true;
+      let text = null;
+      try { text = await decodeCurrentFrame(); } catch (_) {}
+      decoding = false;
+      if (text) {
+        if (applyBeaconSerial(text)) { window.dhStopScan(); return; }
+        setStatus('Read "' + String(text).slice(0, 32) + '" — not a beacon serial. Point at the beacon QR code.');
+      }
+    }
+    rafId = requestAnimationFrame(scanTick);
+  }
+
   async function dhStartScan() {
     const errEl = document.getElementById('dh-error');
     if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
 
-    if (!codeReader) {
-      if (typeof ZXing === 'undefined' || window._zxingLoadFailed) {
-        setStatus('QR / barcode library (ZXing) could not be loaded. Check your internet connection, then reload the page.', true);
-        return;
-      }
-      try {
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-          ZXing.BarcodeFormat.QR_CODE,
-          ZXing.BarcodeFormat.CODE_128,
-          ZXing.BarcodeFormat.CODE_39,
-          ZXing.BarcodeFormat.CODE_93,
-          ZXing.BarcodeFormat.EAN_13,
-          ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.UPC_E,
-          ZXing.BarcodeFormat.ITF,
-          ZXing.BarcodeFormat.DATA_MATRIX,
-          ZXing.BarcodeFormat.PDF_417,
-          ZXing.BarcodeFormat.AZTEC,
-        ]);
-        codeReader = new ZXing.BrowserMultiFormatReader(hints);
-      } catch (e) {
-        setStatus('Failed to initialise QR/barcode reader: ' + (e.message || e), true);
-        return;
-      }
+    const haveJsQR = (typeof jsQR === 'function') && !window._jsqrLoadFailed;
+    if (!haveJsQR && !barcodeDetector) {
+      setStatus('QR decoder could not be loaded. Check your connection and reload, or type the serial number below.', true);
+      return;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setStatus('Camera API not available. Page must be served over HTTPS.', true);
+      setStatus('Camera API not available. The page must be served over HTTPS.', true);
       return;
     }
 
-    const videoEl  = document.getElementById('dh-video');
+    const video    = document.getElementById('dh-video');
     const torchBtn = document.getElementById('dh-torch-btn');
-    const passEl   = document.getElementById('dh-scan-passes');
 
-    userZoom = 3; torchOn = false;
-    dhSetZoom(3);
-    if (torchBtn) { torchBtn.textContent = 'Torch'; torchBtn.classList.remove('on'); torchBtn.disabled = false; }
-    if (passEl)   { passEl.textContent = ''; passEl.classList.remove('active'); }
-    if (videoEl)  videoEl.style.transform = '';
+    torchOn = false;
+    if (torchBtn) { torchBtn.textContent = '🔦 Torch'; torchBtn.classList.remove('on'); torchBtn.disabled = false; }
+    if (video) video.style.transform = '';
 
-    setStatus('Opening camera...');
-
+    setStatus('Opening camera…');
     try {
-      scanControls = await codeReader.decodeFromConstraints(
-        { video: { facingMode: { ideal: 'environment' } } },
-        videoEl,
-        function (result, err) {
-          if (result) {
-            var text = result.getText();
-            if (applyScanned(text)) {
-              dhStopScan();
-            } else {
-              setStatus('Read: ' + text.slice(0, 48) + (text.length > 48 ? '...' : '') + ' (unrecognised format)');
-            }
-          }
-        }
-      );
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width:  { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
     } catch (e) {
-      var isPermission = e.name === 'NotAllowedError' || (e.message || '').toLowerCase().indexOf('ermission') !== -1;
-      setStatus(isPermission
-        ? 'Camera permission denied — tap the address bar lock and allow Camera.'
-        : 'Cannot open camera: ' + (e.message || e), true);
-      scanControls = null;
+      var isPerm = e && (e.name === 'NotAllowedError' || (e.message || '').toLowerCase().indexOf('ermission') !== -1);
+      setStatus(isPerm
+        ? 'Camera permission denied — allow Camera access for this page, then try again.'
+        : 'Cannot open camera: ' + ((e && e.message) || e), true);
+      stream = null;
       setBtnStopped();
       return;
     }
 
+    video.srcObject = stream;
+    try { await video.play(); } catch (_) {}
+
+    /* Prefer continuous autofocus for small labels, then apply default 3× zoom */
+    try {
+      const track = stream.getVideoTracks()[0];
+      if (track && track.getCapabilities) {
+        const caps = track.getCapabilities();
+        if (caps && caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){});
+        }
+      }
+    } catch (_) {}
+    window.dhSetZoom(3);
+
     document.getElementById('dh-video-container').classList.add('active');
     document.getElementById('dh-controls').classList.add('active');
-    var btn = document.getElementById('dh-scan-btn');
-    if (btn) btn.innerHTML = 'Stop Scanning';
-    setStatus('Scanning — hold the QR code or barcode steady inside the frame...');
+    setBtnScanning();
+    setStatus('Scanning — hold the beacon QR code steady inside the frame…');
+
+    scanning = true; decoding = false; lastTs = 0;
+    rafId = requestAnimationFrame(scanTick);
   }
 
   window.dhStopScan = function () {
-    if (scanControls) {
-      try { scanControls.stop(); } catch (_) {}
-      scanControls = null;
-    }
-    try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch (_) { codeReader = null; }
-    var videoEl = document.getElementById('dh-video');
-    if (videoEl) { videoEl.srcObject = null; videoEl.style.transform = ''; }
+    scanning = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {} stream = null; }
+    var video = document.getElementById('dh-video');
+    if (video) { video.srcObject = null; video.style.transform = ''; }
     var vc   = document.getElementById('dh-video-container');
     var ctrl = document.getElementById('dh-controls');
     if (vc)   vc.classList.remove('active');
@@ -5851,662 +5056,10 @@ window.ebLoadConfig = ebLoadConfig;
   };
 
   window.dhToggleScan = function () {
-    if (scanControls) { dhStopScan(); setStatus('Scanner stopped.'); }
-    else              { dhStartScan(); }
+    if (scanning) { window.dhStopScan(); setStatus('Scanner stopped.'); }
+    else          { dhStartScan(); }
   };
 
-})();
-</script>
-
-<!-- ══════════ DEVICE HEALTH DIAGNOSTICS (public truvami API only) ══════════ -->
-<script>
-(function () {
-  'use strict';
-
-  /* Public truvami API — auth via the X-Api-Key header.
-     The key is entered once and stored on this device only. */
-  var API_DEFAULT  = 'https://api.truvami.com/v1';
-  var KEY_STORE    = 'truvami_api_key';
-  var BASE_STORE   = 'truvami_api_base';
-  var MAX_AGE_MS   = 3 * 3600 * 1000;   // 3 hours
-  var BATTERY_PASS = 100;               // percent
-  var LOOKBACK_MS  = 30 * 24 * 3600 * 1000;
-
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-
-  function fmtAge(ms){
-    if(ms==null) return '—';
-    if(ms < 0) ms = 0;
-    var mins = Math.round(ms/60000);
-    if(mins < 60) return mins + ' min ago';
-    var h = Math.floor(mins/60), mm = mins%60;
-    if(h < 48) return h + 'h ' + mm + 'm ago';
-    return Math.floor(h/24) + ' days ago';
-  }
-
-  /* ---------- API key: stored on device, never hardcoded ---------- */
-  function getKey(){ try { return localStorage.getItem(KEY_STORE) || ''; } catch(e){ return ''; } }
-  function setKey(k){ try { localStorage.setItem(KEY_STORE, k); } catch(e){} refreshKeyState(); }
-  function maskKey(k){ return !k ? '' : (k.length<=12 ? k.slice(0,4)+'…' : k.slice(0,9)+'…'+k.slice(-4)); }
-
-  /* API base: direct truvami API, or a proxy you host (solves browser CORS) */
-  function getBase(){
-    var b = '';
-    try { b = localStorage.getItem(BASE_STORE) || ''; } catch(e){}
-    return (b || API_DEFAULT).replace(/\/+$/, '');
-  }
-  function isProxy(){ return getBase() !== API_DEFAULT; }
-
-  window.dhPromptApiBase = function(){
-    var cur = getBase();
-    var v = window.prompt(
-      'API endpoint base URL\n\n' +
-      'Default (works when this app is hosted on a truvami origin):\n' + API_DEFAULT + '\n\n' +
-      'Or paste your own proxy base URL (e.g. https://truvami-eol.<you>.workers.dev/v1)\n' +
-      'to run from any origin. Leave blank to reset to default.', cur);
-    if(v === null) return;
-    v = v.trim().replace(/\/+$/, '');
-    try { localStorage.setItem(BASE_STORE, v); } catch(e){}
-    refreshKeyState();
-  };
-
-  function refreshKeyState(){
-    var el = document.getElementById('dh-key-state');
-    if(!el) return;
-    var k = getKey();
-    var txt = (k ? ('key ' + maskKey(k)) : 'no API key');
-    txt += ' · ' + (isProxy() ? 'proxy endpoint' : 'direct API');
-    el.textContent = txt;
-    el.className = 'dh-key-state' + (k || isProxy() ? ' ok' : '');
-  }
-
-  window.dhPromptApiKey = function(force){
-    var cur = getKey();
-    if(cur && !force) return cur;
-    var msg = 'Enter your truvami API key\n\n' +
-              'Stored only on this device, sent as the X-Api-Key header.\n' +
-              'Required read scopes:\n  • devices:read\n  • positions:read\n  • battery:read';
-    var v = window.prompt(msg, cur || '');
-    if(v === null) return cur;
-    setKey(v.trim());
-    return v.trim();
-  };
-
-  /* ---- REMOVED: legacy dashboard-page parser (no longer used; API-only now) ----
-  function parseDashboard(raw){
-    var flat = String(raw||'').replace(/ /g,' ').replace(/\s+/g,' ').trim();
-
-    var battery = null, m;
-    m = flat.match(/(\d{1,3})\s*%\s*Firmware version/i);
-    if(m) battery = parseInt(m[1],10);
-    // fallback: first standalone percentage in the header area
-    if(battery==null){ m = flat.match(/\b(\d{1,3})\s*%/); if(m) battery = parseInt(m[1],10); }
-
-    var fw = null;
-    m = flat.match(/Firmware version\s+([^\s]+)/i);
-    if(m && m[1] && m[1] !== '-') fw = m[1];
-
-    var hw = null;
-    m = flat.match(/Hardware version\s+([^\s]+)/i);
-    if(m && m[1] && m[1] !== '-') hw = m[1];
-
-    var deveui = null;
-    m = flat.match(/\b([0-9A-Fa-f]{16})\b/);
-    if(m) deveui = m[1].toUpperCase();
-
-    var name = null;
-    m = flat.match(/Back to Trackers\s+[\d.]+\s*-\s*[\d.]+\s+([^\s]+)/i);
-    if(m) name = m[1];
-
-    // Positions table rows: Timestamp ReceivedAt Delay Lat Lon Alt Moving Source
-    var rowRe = /(\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2})(?::\d{2})?\s+\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}(?::\d{2})?\s+\d+\s*s\s+[\d.]+\s+[\d.]+\s+\S+\s+\S+\s+(Wi-?Fi(?:\s?\([^)]*\))?|GPS|GNSS|BLE|Bluetooth)/gi;
-    var positions = [], r;
-    while((r = rowRe.exec(flat)) !== null){ positions.push({ ts:r[1], source:r[2] }); }
-
-    // fallback: "Last position DD.MM.YYYY HH:MM" (source unknown)
-    var lastPos = null;
-    m = flat.match(/Last position\s+(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2})/i);
-    if(m) lastPos = m[1];
-
-    return { battery:battery, fw:fw, hw:hw, deveui:deveui, name:name, positions:positions, lastPos:lastPos };
-  }
-  ---- end removed parser ---- */
-
-  function chkRow(ok, name, val, info){
-    var cls = info ? 'dh-chk dh-chk-info' : 'dh-chk';
-    var ico = info ? '<span class="dh-chk-ico" style="color:var(--muted)">•</span>'
-                   : '<span class="dh-chk-ico ' + (ok?'ok':'ko') + '">' + (ok?'✓':'✗') + '</span>';
-    return '<div class="'+cls+'">'+ico+
-           '<div class="dh-chk-body"><div class="dh-chk-name">'+esc(name)+'</div>'+
-           '<div class="dh-chk-val">'+esc(val)+'</div></div></div>';
-  }
-
-  function showErr(out, title, detail){
-    out.innerHTML = '<div class="dh-hc-err"><b>' + title + '</b>' +
-                    (detail ? '<div style="margin-top:6px;font-weight:400">' + detail + '</div>' : '') + '</div>';
-    window.__dhLastCheck = null;
-  }
-
-  /* ---------- MAIN: API-only health diagnostics ---------- */
-  window.dhRunDiagnostics = function(){
-    var out = document.getElementById('dh-hc-result');
-    if(!out) return;
-
-    var eui = window.__dhExpectedDevEui;
-    if(!eui){ showErr(out, 'Scan or enter a DevEUI first.'); return; }
-
-    // A proxy endpoint may hold the key server-side, so only require a key in direct mode
-    var key = getKey();
-    if(!key && !isProxy()) key = window.dhPromptApiKey(false);
-    if(!key && !isProxy()){
-      showErr(out, 'An API key is required.', 'Tap “Change key” to enter it, or “Endpoint” to use a proxy that holds the key.');
-      return;
-    }
-
-    out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Querying truvami API for ' + esc(eui) + '…</div>';
-    window.__dhLastCheck = null;
-
-    var toIso   = new Date(Date.now() + 60000).toISOString();
-    var fromIso = new Date(Date.now() - LOOKBACK_MS).toISOString();
-    var base    = getBase() + '/devices/' + encodeURIComponent(eui);
-    var H       = { 'Accept': 'application/json' };
-    if(key) H['X-Api-Key'] = key;
-
-    function posUrl(src){
-      return base + '/positions?page=1&limit=1&from=' + fromIso + '&to=' + toIso +
-             '&sources=' + src + '&sort=' + encodeURIComponent('capturedAt:desc');
-    }
-    function req(url){
-      return fetch(url, { headers: H }).then(function(r){
-        return r.text().then(function(t){
-          var j = null; try { j = JSON.parse(t); } catch(e){}
-          return { status:r.status, ok:r.ok, json:j };
-        });
-      }, function(e){ return { network:true, error:String(e) }; });
-    }
-
-    Promise.all([
-      req(base),
-      req(base + '/battery-history?from=' + fromIso + '&to=' + toIso + '&type=percentage&limit=1000'),
-      req(posUrl('gnss')),
-      req(posUrl('wifi'))
-    ]).then(function(res){
-      var devR=res[0], batR=res[1], gR=res[2], wR=res[3];
-
-      if(res.every(function(r){ return r.network; })){
-        showErr(out, 'Could not reach the API (blocked or offline).',
-          isProxy()
-            ? 'Your proxy endpoint did not respond. Check it is deployed and returns CORS headers:<br><code>' + esc(getBase()) + '</code>'
-            : 'The browser blocked this request. api.truvami.com only sends CORS headers to allow-listed truvami origins, so a page hosted elsewhere cannot call it directly.<br><br>' +
-              'Fix it by either:<br>' +
-              '• hosting this app on an allow-listed truvami origin, or<br>' +
-              '• tapping <b>Endpoint</b> and pointing it at your own proxy (see truvami-eol-proxy.js).');
-        return;
-      }
-
-      function scopeErrOf(r){
-        if(!r || !r.json || !r.json.errors || !r.json.errors[0]) return null;
-        var m = r.json.errors[0].message || '';
-        return /scope/i.test(m) ? m : null;
-      }
-
-      if(devR.status === 401 && !scopeErrOf(devR)){
-        showErr(out, 'API key rejected (401).', 'Tap “Change key” below to re-enter a valid key.');
-        return;
-      }
-      if(devR.status === 404){
-        showErr(out, 'Device not found.', esc(eui) + ' is unknown or not visible to this API key.');
-        return;
-      }
-
-      var dev = (devR.json && devR.json.data) || {};
-
-      var battery=null, bTs=null;
-      ((batR.json && batR.json.data) || []).forEach(function(x){
-        if(x && typeof x.percentage === 'number' && (!bTs || new Date(x.timestamp) > new Date(bTs))){
-          bTs = x.timestamp; battery = x.percentage;
-        }
-      });
-
-      function firstCap(r){
-        var d = (r.json && r.json.data) || [];
-        return d[0] ? d[0].capturedAt : null;
-      }
-      var gTs = firstCap(gR), wTs = firstCap(wR);
-
-      var nn   = new Date();
-      var gAge = gTs ? (nn - new Date(gTs)) : null;
-      var wAge = wTs ? (nn - new Date(wTs)) : null;
-
-      var posScopeErr = scopeErrOf(gR) || scopeErrOf(wR);
-      var batScopeErr = scopeErrOf(batR);
-
-      var batOK = (battery === BATTERY_PASS);
-      var gOK   = (gTs != null) && (gAge <= MAX_AGE_MS);
-      var wOK   = (wTs != null) && (wAge <= MAX_AGE_MS);
-      var overall = batOK && gOK && wOK;
-
-      var rows = '';
-      rows += chkRow(batOK, 'Battery = 100%',
-        batScopeErr ? 'unavailable — key lacks battery scope'
-                    : ((battery==null ? 'no battery data' : battery + '%') + (batOK ? '' : '  (required 100%)')));
-      rows += chkRow(gOK, 'GNSS position < 3 h',
-        posScopeErr ? 'unavailable — key lacks positions:read'
-                    : (gTs ? (new Date(gTs).toLocaleString() + '  ·  ' + fmtAge(gAge)) : 'no GNSS position on record'));
-      rows += chkRow(wOK, 'WiFi position < 3 h',
-        posScopeErr ? 'unavailable — key lacks positions:read'
-                    : (wTs ? (new Date(wTs).toLocaleString() + '  ·  ' + fmtAge(wAge)) : 'no WiFi position on record'));
-      rows += chkRow(true, 'Firmware version (info)', dev.firmwareVersion || 'not reported', true);
-
-      var notes = [];
-      if(dev.label) notes.push('Device: ' + dev.label + (dev.deviceType ? (' (' + dev.deviceType + ')') : ''));
-      notes.push('DevEUI: ' + eui);
-      if(posScopeErr){
-        notes.push('⚠ GNSS/WiFi could not be verified — this API key is missing the positions:read scope, so both count as FAIL. Request a key with positions:read.');
-      } else if(!gTs){
-        notes.push('No GNSS fix on record. If this hardware is WiFi-only, the GNSS rule may not apply.');
-      }
-      notes.push('Checked ' + nn.toLocaleString() + ' · live from truvami API.');
-
-      finishRender(out, overall, rows, notes, {
-        deveui: eui,
-        deviceName: dev.label || null,
-        firmware: dev.firmwareVersion || null,
-        hardware: dev.hardwareVersion || null,
-        battery: battery, batOK: batOK,
-        gnssTs: gTs, gnssAgeMs: gAge, gOK: gOK,
-        wifiTs: wTs, wifiAgeMs: wAge, wOK: wOK,
-        overall: overall, checkedAt: nn.toISOString(), source: 'api'
-      });
-    });
-  };
-
-  /* ---------- shared result renderer ---------- */
-  function finishRender(out, overall, rowsHtml, notes, record){
-    var html = '<div class="dh-verdict '+(overall?'ok':'ko')+'">'+
-      '<span class="dh-verdict-badge">'+(overall?'OK':'KO')+'</span>'+
-      '<span class="dh-verdict-sub">'+(overall?'All checks passed.':'One or more checks failed — see below.')+'</span></div>';
-    html += rowsHtml;
-    html += '<div class="dh-hc-note">' + notes.map(esc).join('<br>') + '</div>';
-    html += '<div class="dh-hc-saverow">' +
-      '<button class="btn-p" onclick="dhSaveRecord(this)">💾 Save to Audit Log</button>' +
-      '<span id="dh-save-status" class="dh-save-status"></span></div>';
-    window.__dhLastCheck = record;
-    out.innerHTML = html;
-    try { out.scrollIntoView({ behavior:'smooth', block:'nearest' }); } catch(e){}
-  }
-
-  /* ---- REMOVED: dashboard-proxy auto-check and clipboard paste helpers.
-          The app now uses the public truvami API only (see dhRunDiagnostics above).
-
-  window.dhRunAuto_legacy = function(){
-    var out = document.getElementById('dh-hc-result');
-    if(!out) return;
-    var eui = window.__dhExpectedDevEui;
-    if(!eui){ out.innerHTML = '<div class="dh-hc-err">Scan or enter a DevEUI first.</div>'; return; }
-
-    out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Checking ' + esc(eui) + ' via the dashboard…</div>';
-    window.__dhLastCheck = null;
-
-    var now  = new Date();
-    var toIso   = new Date(now.getTime() + 60000).toISOString();
-    var fromIso = new Date(now.getTime() - 30*24*3600*1000).toISOString();
-    var base = API_BASE + '/devices/' + encodeURIComponent(eui);
-    function posUrl(src){
-      return base + '/positions?page=1&limit=1&from=' + fromIso + '&to=' + toIso +
-             '&sources=' + src + '&sort=' + encodeURIComponent('capturedAt:desc');
-    }
-    function getJson(url){
-      return fetch(url, { credentials:'include', headers:{ 'Accept':'application/json' } })
-        .then(function(r){ return { ok:r.ok, status:r.status, json: r.ok ? r.json() : null }; });
-    }
-
-    Promise.all([
-      getJson(base),
-      getJson(base + '/battery-history?limit=1000&from=' + fromIso + '&to=' + toIso + '&type=percentage&bucketFill=true'),
-      getJson(posUrl('gnss_active,gnss_passive')),
-      getJson(posUrl('wifi_google,wifi_here'))
-    ]).then(function(reps){
-      var authFail = reps.some(function(r){ return r.status === 401 || r.status === 403; });
-      var anyOk    = reps.some(function(r){ return r.ok; });
-      if(authFail || !anyOk) return dhAutoFallback(out, authFail ? 'auth' : 'net');
-
-      return Promise.all(reps.map(function(r){ return r.json ? r.json.catch(function(){return null;}) : null; }))
-        .then(function(bodies){
-          var dev = bodies[0] && bodies[0].data ? bodies[0].data : {};
-          var batArr = (bodies[1] && bodies[1].data) || [];
-          var gArr = (bodies[2] && bodies[2].data) || [];
-          var wArr = (bodies[3] && bodies[3].data) || [];
-
-          var battery=null, bts=null;
-          batArr.forEach(function(x){
-            if(x && typeof x.percentage==='number' && (!bts || new Date(x.timestamp) > new Date(bts))){ bts=x.timestamp; battery=x.percentage; }
-          });
-          var gTs = gArr[0] ? gArr[0].capturedAt : null;
-          var wTs = wArr[0] ? wArr[0].capturedAt : null;
-
-          var nn = new Date();
-          var gAge = gTs ? (nn - new Date(gTs)) : null;
-          var wAge = wTs ? (nn - new Date(wTs)) : null;
-          var batOK = (battery === BATTERY_PASS);
-          var gOK = (gTs != null) && (gAge <= MAX_AGE_MS);
-          var wOK = (wTs != null) && (wAge <= MAX_AGE_MS);
-          var overall = batOK && gOK && wOK;
-
-          var rows = '';
-          rows += chkRow(batOK, 'Battery = 100%', (battery==null?'not found':battery+'%') + (batOK?'':'  (required 100%)'));
-          rows += chkRow(gOK, 'GNSS position < 3 h', gTs ? (new Date(gTs).toLocaleString() + '  ·  ' + fmtAge(gAge)) : 'no GNSS position on record');
-          rows += chkRow(wOK, 'WiFi position < 3 h', wTs ? (new Date(wTs).toLocaleString() + '  ·  ' + fmtAge(wAge)) : 'no WiFi position on record');
-          rows += chkRow(true, 'Firmware version (info)', dev.firmwareVersion || 'not found', true);
-
-          var notes = [];
-          if(dev.label) notes.push('Device: ' + dev.label + (dev.deviceType ? (' (' + dev.deviceType + ')') : ''));
-          notes.push('DevEUI: ' + eui);
-          if(!gTs) notes.push('No GNSS fix on record. If this hardware is WiFi-only, the GNSS rule may not apply.');
-          notes.push('Checked ' + nn.toLocaleString() + ' · live from dashboard API.');
-
-          finishRender(out, overall, rows, notes, {
-            deveui: eui, deviceName: dev.label || null,
-            firmware: dev.firmwareVersion || null, hardware: dev.hardwareVersion || null,
-            battery: battery, batOK: batOK,
-            gnssTs: gTs, gnssAgeMs: gAge, gOK: gOK,
-            wifiTs: wTs, wifiAgeMs: wAge, wOK: wOK,
-            overall: overall, checkedAt: nn.toISOString(), source: 'api'
-          });
-        });
-    }).catch(function(){ dhAutoFallback(out, 'net'); });
-  };
-
-  ---------- one-tap clipboard helper (removed) ----------
-  window.dhPasteAndCheck_legacy = function(btn){
-    var out = document.getElementById('dh-hc-result');
-    var ta  = document.getElementById('dh-hc-input');
-    if(!out || !ta) return;
-    function manualFallback(msg){
-      out.innerHTML = '<div class="dh-hc-err">' + msg + '</div>';
-      var det = document.getElementById('dh-hc-fallback');
-      if(det) det.open = true;
-      try { ta.focus(); } catch(e){}
-    }
-    if(!(navigator.clipboard && navigator.clipboard.readText)){
-      manualFallback('This browser won’t allow one-tap paste. Tap the box below and paste the copied page.');
-      return;
-    }
-    out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Reading clipboard…</div>';
-    navigator.clipboard.readText().then(function(text){
-      if(!text || text.trim().length < 20){
-        manualFallback('Clipboard looks empty. On the dashboard device page do <b>Select All → Copy</b> first, then tap Paste &amp; Check.');
-        return;
-      }
-      ta.value = text;
-      dhRunHealthCheck();
-    }).catch(function(){
-      manualFallback('Couldn’t read the clipboard automatically (iOS may need a tap). Tap the box below and paste.');
-    });
-  };
-
-  function dhAutoFallback(out, reason){
-    var msg = (reason === 'auth')
-      ? 'Your dashboard session has expired. Open the Truvami Dashboard button above, sign in again, then retry — or use manual paste below.'
-      : 'Couldn’t reach the dashboard automatically. This works only when the app is opened from the <b>dashboard.truvami.com</b> domain and you’re logged in. Use manual paste below.';
-    out.innerHTML = '<div class="dh-hc-err">' + msg + '</div>';
-    window.__dhLastCheck = null;
-    var det = document.getElementById('dh-hc-fallback');
-    if(det) det.open = true;
-  }
-  ---- end removed legacy helpers ---- */
-
-  window.dhClearHealthCheck = function(){
-    var out = document.getElementById('dh-hc-result');
-    if(out) out.innerHTML='';
-    window.__dhLastCheck = null;
-  };
-
-  /* ---------- init ---------- */
-  function initKeyState(){ refreshKeyState(); }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initKeyState);
-  else initKeyState();
-})();
-</script>
-
-<!-- ══════════ EOL AUDIT LOG (on-device, CSV export) ══════════ -->
-<script>
-(function () {
-  'use strict';
-
-  var APP_VERSION = 'EOL-1.0';
-  var DB_NAME  = 'truvami-eol';
-  var STORE    = 'audit';
-  var SEQ_KEY  = 'truvami_eol_seq';
-  var SESSION_KEYS = { op:'truvami_eol_operator', st:'truvami_eol_station', wo:'truvami_eol_workorder' };
-
-  /* ---------- storage: IndexedDB with localStorage fallback ---------- */
-  var _db = null, _idbOK = ('indexedDB' in window);
-
-  function openDb(){
-    return new Promise(function(res, rej){
-      if(!_idbOK) return rej('no-idb');
-      if(_db) return res(_db);
-      var req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = function(e){
-        var db = e.target.result;
-        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath:'id' });
-      };
-      req.onsuccess = function(e){ _db = e.target.result; res(_db); };
-      req.onerror   = function(){ _idbOK = false; rej(req.error); };
-    });
-  }
-  function lsAll(){ try { return JSON.parse(localStorage.getItem('truvami_eol_records')||'[]'); } catch(e){ return []; } }
-  function lsWrite(a){ localStorage.setItem('truvami_eol_records', JSON.stringify(a)); }
-
-  function addRecord(rec){
-    return openDb().then(function(db){
-      return new Promise(function(res, rej){
-        var tx = db.transaction(STORE,'readwrite');
-        tx.objectStore(STORE).add(rec);
-        tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
-      });
-    }).catch(function(){ var a=lsAll(); a.push(rec); lsWrite(a); });
-  }
-  function getAll(){
-    return openDb().then(function(db){
-      return new Promise(function(res, rej){
-        var out=[], cur=db.transaction(STORE,'readonly').objectStore(STORE).openCursor();
-        cur.onsuccess = function(e){ var c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out); };
-        cur.onerror = function(){ rej(cur.error); };
-      });
-    }).catch(function(){ return lsAll(); });
-  }
-  function clearAll(){
-    return openDb().then(function(db){
-      return new Promise(function(res, rej){
-        var tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear();
-        tx.oncomplete=res; tx.onerror=function(){ rej(tx.error); };
-      });
-    }).catch(function(){ lsWrite([]); });
-  }
-
-  function uuid(){
-    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
-      var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); });
-  }
-  function nextSeq(){ var n=(parseInt(localStorage.getItem(SEQ_KEY),10)||0)+1; localStorage.setItem(SEQ_KEY,String(n)); return n; }
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-
-  /* ---------- session ---------- */
-  window.dhSaveSession = function(){
-    var g=function(id){ var el=document.getElementById(id); return el?el.value.trim():''; };
-    localStorage.setItem(SESSION_KEYS.op, g('eol-operator'));
-    localStorage.setItem(SESSION_KEYS.st, g('eol-station'));
-    localStorage.setItem(SESSION_KEYS.wo, g('eol-workorder'));
-    updateSessionSummary();
-  };
-  function getSession(){
-    return {
-      operator:  localStorage.getItem(SESSION_KEYS.op) || '',
-      station:   localStorage.getItem(SESSION_KEYS.st) || '',
-      workOrder: localStorage.getItem(SESSION_KEYS.wo) || ''
-    };
-  }
-  function updateSessionSummary(){
-    var s=getSession(), el=document.getElementById('dh-session-summary');
-    if(!el) return;
-    var parts=[]; if(s.operator) parts.push(s.operator); if(s.station) parts.push(s.station); if(s.workOrder) parts.push(s.workOrder);
-    el.textContent = parts.length ? parts.join(' · ') : 'Tap to set operator & station';
-  }
-  window.dhToggleSession = function(){
-    var el=document.getElementById('dh-session');
-    if(el){ el.classList.toggle('collapsed');
-      localStorage.setItem('truvami_eol_session_collapsed', el.classList.contains('collapsed')?'1':'0'); }
-  };
-
-  /* ---------- age helper ---------- */
-  function ageMin(ms){ return (ms==null) ? '' : Math.max(0, Math.round(ms/60000)); }
-
-  /* ---------- save a result ---------- */
-  window.dhSaveRecord = function(btn){
-    var status=document.getElementById('dh-save-status');
-    var c=window.__dhLastCheck;
-    function setStatus(msg, cls){ if(status){ status.textContent=msg; status.className='dh-save-status '+(cls||''); } }
-    if(!c){ setStatus('Run a check first.', 'err'); return; }
-    if(c._saved){ setStatus('Already saved (#'+c._seq+').'); return; }
-
-    // Reserve synchronously so rapid double-taps can't create duplicates
-    c._saved = true;
-    if(btn) btn.disabled = true;
-
-    var s=getSession();
-    var rec={
-      id: uuid(),
-      seq: nextSeq(),
-      savedAt: new Date().toISOString(),
-      checkedAt: c.checkedAt,
-      operator: s.operator, station: s.station, workOrder: s.workOrder,
-      deviceName: c.deviceName, deveui: c.deveui,
-      firmware: c.firmware, hardware: c.hardware,
-      battery: c.battery, batteryPass: !!c.batOK,
-      gnssTs: c.gnssTs, gnssAgeMin: ageMin(c.gnssAgeMs), gnssPass: !!c.gOK,
-      wifiTs: c.wifiTs, wifiAgeMin: ageMin(c.wifiAgeMs), wifiPass: !!c.wOK,
-      overall: c.overall ? 'OK' : 'KO',
-      appVersion: APP_VERSION
-    };
-    c._seq = rec.seq;
-    addRecord(rec).then(function(){
-      setStatus('Saved as #'+rec.seq+' ('+rec.overall+').', 'suc');
-      renderLog();
-    }).catch(function(){
-      c._saved = false; if(btn) btn.disabled = false;
-      setStatus('Save failed — storage unavailable.', 'err');
-    });
-  };
-
-  /* ---------- render log ---------- */
-  function matchesFilter(r, q){
-    if(!q) return true; q=q.toLowerCase();
-    return [r.deveui,r.operator,r.station,r.workOrder,r.overall,r.deviceName]
-      .some(function(v){ return String(v||'').toLowerCase().indexOf(q)>=0; });
-  }
-  function fmtLocal(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return iso||''; } }
-
-  window.dhRenderLog = function(){ renderLog(); };
-  function renderLog(){
-    var listEl=document.getElementById('dh-audit-list');
-    var cntEl=document.getElementById('dh-audit-counts');
-    if(!listEl) return;
-    var q=(document.getElementById('dh-audit-search')||{}).value||'';
-    getAll().then(function(all){
-      all.sort(function(a,b){ return (b.seq||0)-(a.seq||0); });
-      var ok=all.filter(function(r){return r.overall==='OK';}).length;
-      var ko=all.length-ok;
-      if(cntEl){
-        cntEl.innerHTML = all.length
-          ? all.length+' total · <b class="ok">'+ok+' OK</b> · <b class="ko">'+ko+' KO</b>'
-          : 'No records yet';
-      }
-      var rows=all.filter(function(r){ return matchesFilter(r,q); });
-      if(!rows.length){ listEl.innerHTML='<div class="dh-audit-empty">'+(all.length?'No matches.':'Saved results will appear here.')+'</div>'; return; }
-      listEl.innerHTML = rows.slice(0,200).map(function(r){
-        var meta=[]; if(r.operator) meta.push(r.operator); if(r.station) meta.push(r.station);
-        if(r.workOrder) meta.push(r.workOrder); meta.push(fmtLocal(r.savedAt));
-        return '<div class="dh-rec">'+
-          '<span class="dh-rec-badge '+(r.overall==='OK'?'ok':'ko')+'">'+r.overall+'</span>'+
-          '<div class="dh-rec-main"><div class="dh-rec-eui">'+esc(r.deveui||r.deviceName||'—')+'</div>'+
-          '<div class="dh-rec-meta">'+esc(meta.join(' · '))+'</div></div>'+
-          '<span class="dh-rec-seq">#'+r.seq+'</span></div>';
-      }).join('') + (rows.length>200 ? '<div class="dh-audit-empty">Showing latest 200 of '+rows.length+' — export CSV for all.</div>' : '');
-    });
-  }
-
-  /* ---------- CSV export ---------- */
-  var CSV_COLS=[
-    ['seq','Seq'],['savedAt','Saved At (ISO)'],['checkedAt','Checked At (ISO)'],
-    ['operator','Operator'],['station','Station'],['workOrder','Work Order'],
-    ['deviceName','Device Name'],['deveui','DevEUI'],['firmware','Firmware'],['hardware','Hardware'],
-    ['battery','Battery %'],['batteryPass','Battery Pass'],
-    ['gnssTs','GNSS Timestamp'],['gnssAgeMin','GNSS Age (min)'],['gnssPass','GNSS Pass'],
-    ['wifiTs','WiFi Timestamp'],['wifiAgeMin','WiFi Age (min)'],['wifiPass','WiFi Pass'],
-    ['overall','Result'],['appVersion','App Version']
-  ];
-  function csvCell(v){ v=(v==null?'':String(v)); return '"'+v.replace(/"/g,'""')+'"'; }
-  function buildCsv(rows){
-    var out=[CSV_COLS.map(function(c){ return csvCell(c[1]); }).join(',')];
-    rows.forEach(function(r){ out.push(CSV_COLS.map(function(c){ return csvCell(r[c[0]]); }).join(',')); });
-    return '﻿'+out.join('\r\n');   // BOM for Excel
-  }
-  function ts2(){ var d=new Date(),p=function(n){return String(n).padStart(2,'0');};
-    return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes()); }
-  function deliver(text, fname){
-    var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
-    try{
-      var file=new File([blob],fname,{type:'text/csv'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:fname}).catch(function(){ anchor(blob,fname); });
-        return;
-      }
-    }catch(e){}
-    anchor(blob,fname);
-  }
-  function anchor(blob,fname){
-    var url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download=fname; document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1500);
-  }
-  window.dhExportCsv = function(failuresOnly){
-    getAll().then(function(all){
-      all.sort(function(a,b){ return (a.seq||0)-(b.seq||0); });
-      var rows = failuresOnly ? all.filter(function(r){ return r.overall==='KO'; }) : all;
-      if(!rows.length){ alert(failuresOnly ? 'No failures to export.' : 'No records to export yet.'); return; }
-      deliver(buildCsv(rows), 'truvami_eol_audit_'+ts2()+(failuresOnly?'_failures':'')+'.csv');
-    });
-  };
-
-  /* ---------- clear ---------- */
-  window.dhClearLog = function(){
-    getAll().then(function(all){
-      if(!all.length){ alert('Log is already empty.'); return; }
-      if(!confirm('Clear all '+all.length+' audit records from this device?\n\nExport a CSV first — this cannot be undone.')) return;
-      if(!confirm('Are you sure? This permanently erases the on-device log.')) return;
-      clearAll().then(function(){ renderLog(); alert('Audit log cleared.'); });
-    });
-  };
-
-  /* ---------- init ---------- */
-  function init(){
-    var s=getSession();
-    var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v; };
-    set('eol-operator', s.operator); set('eol-station', s.station); set('eol-workorder', s.workOrder);
-    updateSessionSummary();
-    var sess=document.getElementById('dh-session');
-    if(sess){
-      var collapsed = localStorage.getItem('truvami_eol_session_collapsed');
-      if(collapsed==='1' || (collapsed===null && (s.operator||s.station))) sess.classList.add('collapsed');
-    }
-    renderLog();
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
 })();
 </script>
 </body>
