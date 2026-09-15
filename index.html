@@ -389,7 +389,7 @@
     </button>
     <button id="nav-health" class="topbar-navbtn" onclick="selectMode('health')"
       style="background:transparent;border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 13px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent">
-      <span class="nav-full">📶 BLE Beacon</span><span class="nav-short">📶 Beacon</span>
+      <span class="nav-full">🩺 Health</span><span class="nav-short">🩺 Health</span>
     </button>
   </nav>
   <div class="topbar-badge" style="margin-left:auto">Internal Tool</div>
@@ -1316,8 +1316,8 @@
 <!-- ═══════════ DEVICE HEALTH ═══════════ -->
 <div id="panel-health" class="tab-panel">
   <div class="page-hdr">
-    <h1>📶 BLE Beacon</h1>
-    <p>Scan the QR code on a Truvami <strong>BLE Beacon</strong> — the printed <strong>serial number</strong> is converted to its BLE <strong>MAC address</strong>. Works with the white-on-teal beacon labels (inverted QR codes are read automatically).</p>
+    <h1>🩺 Health</h1>
+    <p>Scan the QR code on a Truvami device. Pick <strong>BLE beacon</strong> or <strong>LoRaWAN device</strong> with the toggle. For a BLE beacon the serial is converted to its MAC and DevEUI (<span class="mono">BEEF</span> + MAC); for a LoRaWAN device the DevEUI is read directly from the QR. Then open the dashboard and run a <strong>health check</strong> — no API key, just sign in at <span class="mono">dashboard.truvami.com</span>.</p>
   </div>
 
   <style>
@@ -1423,9 +1423,79 @@
     #dh-beacon-copy-status.vis { opacity:1; }
     #dh-beacon-copy-status.suc { color:var(--success); }
     #dh-beacon-copy-status.err { color:var(--danger); }
+
+    /* ── mode toggle (segmented) ── */
+    #dh-mode-toggle { display:flex; width:100%; max-width:400px; background:var(--surface-2); border:1px solid var(--border-hi); border-radius:var(--radius); padding:3px; gap:3px; }
+    .dh-seg-btn { flex:1; padding:9px 10px; font-size:0.82rem; font-weight:700; color:var(--muted); background:transparent; border:none; border-radius:calc(var(--radius) - 3px); cursor:pointer; transition:all 0.15s; -webkit-tap-highlight-color:transparent; }
+    .dh-seg-btn.active { background:var(--accent-dim); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-glow); }
+
+    /* ── DevEUI result ── */
+    #dh-deveui-display { display:none; flex-direction:column; align-items:center; gap:8px; width:100%; }
+    #dh-deveui-display.show { display:flex; }
+    #dh-deveui-label { font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; }
+    #dh-deveui-value { font-family:var(--mono); font-size:1.05rem; font-weight:700; color:var(--accent); background:var(--surface-2); border:1px solid var(--accent-glow); border-radius:var(--radius); padding:10px 20px; letter-spacing:0.08em; word-break:break-all; text-align:center; }
+
+    /* ── copy DevEUI ── */
+    #dh-deveui-copy-btn { display:none; align-items:center; justify-content:center; gap:8px; width:100%; max-width:320px; padding:12px 20px; font-size:0.88rem; font-weight:700; border-radius:var(--radius); cursor:pointer; transition:opacity 0.15s; background:var(--surface-3); color:var(--text); border:1px solid var(--border-hi); }
+    #dh-deveui-copy-btn.show { display:flex; }
+    #dh-deveui-copy-btn:hover { opacity:0.88; }
+    #dh-deveui-copy-status { font-size:0.76rem; color:var(--muted); opacity:0; transition:opacity 0.3s; text-align:center; }
+    #dh-deveui-copy-status.vis { opacity:1; } #dh-deveui-copy-status.suc { color:var(--success); } #dh-deveui-copy-status.err { color:var(--danger); }
+
+    /* ── link buttons ── */
+    .dh-link-btn { display:none; align-items:center; justify-content:center; gap:8px; width:100%; max-width:320px; padding:13px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:var(--radius); cursor:pointer; text-decoration:none; transition:opacity 0.15s; }
+    .dh-link-btn.show { display:flex; }
+    .dh-link-btn:hover { opacity:0.88; }
+    #dh-dashboard-btn { background:var(--accent); color:#000; }
+    #dh-lns-btn       { background:var(--accent-2); color:#fff; }
+    #dh-open-btn      { background:var(--surface-3); color:var(--text); border:1px solid var(--border-hi); }
+
+    /* ── health check ── */
+    #dh-hc-card { display:none; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 15px; }
+    #dh-hc-card.show { display:block; }
+    .dh-hc-title { font-size:0.9rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .dh-hc-crit { font-size:0.74rem; color:var(--muted); margin-bottom:10px; line-height:1.5; }
+    .dh-hc-crit b { color:var(--accent); }
+    .dh-hc-steps { margin:0 0 11px 0; padding-left:18px; font-size:0.78rem; color:var(--muted); line-height:1.7; }
+    .dh-hc-steps strong { color:var(--text); }
+    #dh-hc-input { width:100%; min-height:70px; font-family:var(--mono); font-size:0.78rem; margin-top:8px; }
+    .dh-hc-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    #dh-hc-result { margin-top:12px; }
+    .dh-verdict { display:flex; align-items:center; gap:12px; border-radius:var(--radius-lg); padding:14px 16px; margin-bottom:12px; border:1px solid; }
+    .dh-verdict-badge { font-size:1.15rem; font-weight:800; letter-spacing:0.08em; padding:6px 16px; border-radius:999px; flex-shrink:0; }
+    .dh-verdict-sub { font-size:0.78rem; line-height:1.4; }
+    .dh-verdict.ok { background:var(--accent-dim); border-color:var(--accent-glow); }
+    .dh-verdict.ok .dh-verdict-badge { background:var(--accent); color:#000; }
+    .dh-verdict.ok .dh-verdict-sub { color:var(--accent); }
+    .dh-verdict.ko { background:var(--danger-dim); border-color:rgba(255,82,82,0.3); }
+    .dh-verdict.ko .dh-verdict-badge { background:var(--danger); color:#fff; }
+    .dh-verdict.ko .dh-verdict-sub { color:var(--danger); }
+    .dh-chk { display:flex; align-items:flex-start; gap:10px; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); margin-bottom:7px; }
+    .dh-chk-ico { font-size:1rem; line-height:1.4; flex-shrink:0; }
+    .dh-chk-ico.ok { color:var(--accent); } .dh-chk-ico.ko { color:var(--danger); }
+    .dh-chk-body { flex:1; min-width:0; }
+    .dh-chk-name { font-size:0.8rem; font-weight:700; color:var(--text); }
+    .dh-chk-val { font-size:0.75rem; color:var(--muted); font-family:var(--mono); margin-top:2px; word-break:break-word; }
+    .dh-chk-info { border-style:dashed; }
+    .dh-hc-note { font-size:0.73rem; color:var(--muted); margin-top:6px; line-height:1.5; }
+    .dh-hc-err { color:var(--danger); font-size:0.8rem; padding:10px 12px; background:var(--danger-dim); border:1px solid rgba(255,82,82,0.22); border-radius:var(--radius); }
+    .dh-hc-fallback { margin-top:12px; }
+    .dh-hc-fallback > summary { font-size:0.78rem; color:var(--muted); cursor:pointer; -webkit-tap-highlight-color:transparent; list-style:none; }
+    .dh-hc-fallback > summary::-webkit-details-marker { display:none; }
+    .dh-hc-fallback > summary::before { content:'▸ '; color:var(--accent); }
+    .dh-hc-fallback[open] > summary::before { content:'▾ '; }
+    .dh-hc-checking { display:flex; align-items:center; gap:9px; font-size:0.82rem; color:var(--muted); padding:10px 0; }
+    .dh-spinner { width:16px; height:16px; border:2px solid var(--border-hi); border-top-color:var(--accent); border-radius:50%; animation:dhspin 0.7s linear infinite; flex-shrink:0; }
+    @keyframes dhspin { to { transform:rotate(360deg); } }
   </style>
 
   <div id="dh-scanner-wrap">
+
+    <!-- Mode toggle: what the QR code belongs to -->
+    <div id="dh-mode-toggle">
+      <button type="button" id="dh-mode-ble"  class="dh-seg-btn active" onclick="dhSetMode('ble')">📶 BLE beacon</button>
+      <button type="button" id="dh-mode-lora" class="dh-seg-btn"        onclick="dhSetMode('lora')">📡 LoRaWAN device</button>
+    </div>
 
     <!-- Action buttons -->
     <div id="dh-top-btns">
@@ -1465,13 +1535,19 @@
       </div>
     </div>
 
-    <div id="dh-status">Point the camera at the BLE Beacon QR code.</div>
+    <div id="dh-status">BLE beacon mode — scan the QR on the beacon (white-on-teal is fine).</div>
     <div id="dh-scan-passes"></div>
     <div id="dh-error"></div>
 
-    <!-- ── Result: BLE Beacon MAC ── -->
+    <!-- ── Result: DevEUI ── -->
+    <div id="dh-deveui-display">
+      <div id="dh-deveui-label">DevEUI</div>
+      <div id="dh-deveui-value">—</div>
+    </div>
+
+    <!-- ── Result: BLE Beacon detail (BLE mode only) ── -->
     <div id="dh-beacon-display">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em">BLE Beacon Detected</div>
+      <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em">BLE Beacon detail</div>
       <div class="dh-beacon-row">
         <div class="dh-beacon-label">Serial Number (SN)</div>
         <div class="dh-beacon-value" id="dh-beacon-sn">—</div>
@@ -1485,6 +1561,17 @@
         <div class="dh-beacon-value" id="dh-beacon-hex">—</div>
       </div>
     </div>
+
+    <!-- Copy DevEUI -->
+    <button id="dh-deveui-copy-btn" onclick="dhCopyDevEui()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+        <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Copy DevEUI
+    </button>
+
+    <!-- Copy MAC (BLE mode only) -->
     <button id="dh-beacon-copy-btn" onclick="dhCopyBeaconMac()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
         <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1493,20 +1580,66 @@
       Copy MAC Address
     </button>
     <div id="dh-beacon-copy-status"></div>
+    <div id="dh-deveui-copy-status"></div>
+
+    <!-- ── Link buttons (Dashboard for all · LNS + Grafana for LoRaWAN only) ── -->
+    <a id="dh-dashboard-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Open Truvami Dashboard
+    </a>
+    <a id="dh-lns-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+        <rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 12h8M8 8h8M8 16h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Open SBC LNS Portal
+    </a>
+    <a id="dh-open-btn" class="dh-link-btn" href="#" target="_blank" rel="noopener noreferrer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Open Grafana Dashboard
+    </a>
+
+    <!-- ── Health Check (via dashboard.truvami.com login — no API key) ── -->
+    <div id="dh-hc-card">
+      <div class="dh-hc-title">🩺 Device Health Check</div>
+      <div class="dh-hc-crit">Pass rules: battery <b>= 100%</b> · GNSS position <b>&lt; 3 h</b> · WiFi position <b>&lt; 3 h</b>. Firmware is shown for reference.</div>
+      <ol class="dh-hc-steps">
+        <li>Tap <strong>Open Truvami Dashboard</strong> above and sign in if asked.</li>
+        <li>On the device page do <strong>Select All → Copy</strong> (the whole page, including the positions table).</li>
+        <li>Come back here and tap <strong>Paste &amp; Check</strong>.</li>
+      </ol>
+      <div class="dh-hc-actions">
+        <button class="btn-p" onclick="dhPasteAndCheck(this)">📋 Paste &amp; Check</button>
+        <button class="btn-s" onclick="dhClearHealthCheck()">Clear</button>
+      </div>
+      <details class="dh-hc-fallback" id="dh-hc-fallback">
+        <summary>Paste manually instead</summary>
+        <textarea id="dh-hc-input" placeholder="Paste the copied dashboard device page here…"></textarea>
+        <div class="dh-hc-actions">
+          <button class="btn-p" onclick="dhRunHealthCheck()">Check pasted page</button>
+        </div>
+      </details>
+      <div id="dh-hc-result"></div>
+    </div>
 
     <!-- Divider -->
     <div class="div" style="width:100%;margin:4px 0"></div>
 
-    <!-- Manual entry options -->
+    <!-- Manual entry (switches with the mode toggle) -->
     <div style="width:100%;display:flex;flex-direction:column;gap:10px">
 
       <!-- BLE Beacon: manual serial -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+      <div id="dh-manual-ble" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
         <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">
           📶 BLE Beacon — manual serial number
         </div>
         <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
-          Enter the decimal serial number printed on the beacon label (e.g. <span style="font-family:var(--mono);color:var(--text)">50967148090692</span>).
+          Enter the decimal serial number printed on the beacon label (e.g. <span style="font-family:var(--mono);color:var(--text)">50967148090692</span>). DevEUI = <span style="font-family:var(--mono);color:var(--text)">BEEF</span> + MAC.
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="dh-beacon-input" type="text" placeholder="e.g. 50967148090692"
@@ -1517,13 +1650,30 @@
         </div>
       </div>
 
+      <!-- LoRaWAN: full DevEUI -->
+      <div id="dh-manual-lora" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">
+          📡 LoRaWAN — DevEUI (16 hex characters)
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
+          Enter the DevEUI exactly as printed on the label — any 16 hex characters.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="dh-manual-input" type="text" placeholder="e.g. 70B3D5XXXXXXXXXX" maxlength="20"
+            style="font-family:var(--mono);text-transform:uppercase;flex:1;min-width:0"
+            oninput="this.value=this.value.toUpperCase().replace(/[^0-9A-F]/g,'')"
+            onkeydown="if(event.key==='Enter')dhApplyManual()">
+          <button class="btn-p" onclick="dhApplyManual()" style="white-space:nowrap;flex-shrink:0">Apply</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Hint -->
     <div class="hint-box" style="width:100%;margin-top:4px">
-      <strong>How it works:</strong> scan the QR code on the beacon (or type the decimal serial) — the MAC address is computed by reversing the 6-byte hex representation of the serial.<br>
-      <strong>Inverted codes:</strong> the beacon QR is printed white on teal plastic, so it is read as an inverted code automatically.<br>
-      <strong>Tip:</strong> use <strong>3× / 4× / 5× zoom</strong> and the <strong>Torch</strong> for small or low-contrast labels, and hold the code steady inside the frame.
+      <strong>BLE beacon:</strong> the QR holds a decimal serial → converted to MAC, and the DevEUI is <span class="mono">BEEF</span> + MAC. Only the <strong>Dashboard</strong> opens for beacons.<br>
+      <strong>LoRaWAN device:</strong> the QR holds the DevEUI in plain text; Dashboard, Swisscom LNS and Grafana all open.<br>
+      <strong>Health check:</strong> uses your <span class="mono">dashboard.truvami.com</span> login — no API key. Inverted (white-on-teal) codes are read automatically. Use zoom/torch for small labels.
     </div>
 
   </div><!-- /#dh-scanner-wrap -->
@@ -4793,6 +4943,13 @@ window.ebLoadConfig = ebLoadConfig;
   let lastTs   = 0;
   let torchOn  = false;
   let userZoom = 1;
+  let dhMode   = 'ble';                 // 'ble' | 'lora'
+
+  /* Deep links. DevEUI is inserted verbatim — no prefix is assumed. */
+  const DASHBOARD_BASE = 'https://dashboard.truvami.com/trackers/';
+  const LNS_BASE       = 'https://portal.lpn.swisscom.ch/tpw/#/devices/list?query=';
+  const GRAFANA_BASE   = 'https://grafana.truvami.com/d/kakhzgc/ops-dashboard-devices?orgId=1&from=now-3h&to=now&timezone=browser&var-customer=$__all&var-groups=$__all&var-Filters=&var-deviceSearch=';
+  const DEVEUI_RE      = /([0-9A-Fa-f]{2}[:\-]?){7}[0-9A-Fa-f]{2}/;
 
   /* Offscreen canvas used to grab & preprocess frames */
   const canvas = document.createElement('canvas');
@@ -4839,19 +4996,83 @@ window.ebLoadConfig = ebLoadConfig;
   function setBtnStopped()  { var b = document.getElementById('dh-scan-btn'); if (b) b.innerHTML = SCAN_SVG; }
   function setBtnScanning() { var b = document.getElementById('dh-scan-btn'); if (b) b.innerHTML = 'Stop Scanning'; }
 
-  /* ── Serial → MAC result rendering ── */
+  /* ── helpers ── */
+  function el(id){ return document.getElementById(id); }
+  function show(id, on){ var e = el(id); if (e) e.classList.toggle('show', !!on); }
+
+  /* DevEUI for a BLE beacon = "BEEF" + MAC (big-endian, no separators).
+     e.g. serial 078553756587332 → MAC 44:D5:C1:B8:71:47 → BEEF44D5C1B87147 */
+  function beaconDevEui(mac){ return 'BEEF' + String(mac).replace(/[:\-]/g,'').toUpperCase(); }
+
+  /* Wire up the deep-link buttons for a DevEUI. When bleOnly is true, only the
+     Truvami Dashboard is offered (no Swisscom LNS, no Grafana). */
+  function setLinks(deveui, bleOnly){
+    var dash = el('dh-dashboard-btn');
+    if (dash){ dash.href = DASHBOARD_BASE + encodeURIComponent(deveui); dash.classList.add('show'); }
+    var lns = el('dh-lns-btn');
+    if (lns){
+      if (bleOnly){ lns.classList.remove('show'); lns.removeAttribute('href'); }
+      else { lns.href = LNS_BASE + encodeURIComponent(deveui) + '%20&tabId=list'; lns.classList.add('show'); }
+    }
+    var graf = el('dh-open-btn');
+    if (graf){
+      if (bleOnly){ graf.classList.remove('show'); graf.removeAttribute('href'); }
+      else { graf.href = GRAFANA_BASE + encodeURIComponent(deveui); graf.classList.add('show'); }
+    }
+  }
+
+  function showDevEui(deveui){
+    var v = el('dh-deveui-value');
+    if (v) v.textContent = deveui;
+    show('dh-deveui-display', true);
+    show('dh-deveui-copy-btn', true);
+    window.__dhExpectedDevEui = deveui;
+    show('dh-hc-card', true);           // offer the dashboard-login health check
+  }
+
+  /* Hide every result element (used on mode switch / fresh scan) */
+  function dhResetResults(){
+    ['dh-deveui-display','dh-deveui-copy-btn','dh-beacon-display','dh-beacon-copy-btn',
+     'dh-dashboard-btn','dh-lns-btn','dh-open-btn','dh-hc-card'].forEach(function(id){ show(id, false); });
+    window.__dhExpectedDevEui = null;
+    if (typeof window.dhClearHealthCheck === 'function') window.dhClearHealthCheck();
+  }
+  window.dhResetResults = dhResetResults;
+
+  /* ── BLE beacon: decimal serial → MAC + DevEUI (BEEF + MAC), dashboard only ── */
   function applyBeaconSerial(raw) {
     const digits = (raw || '').replace(/[^0-9]/g, '');
     if (!digits) return false;
     var result;
     try { result = serialToMac(digits); } catch (e) { return false; }
-    document.getElementById('dh-beacon-sn').textContent  = digits;
-    document.getElementById('dh-beacon-mac').textContent = result.mac;
-    document.getElementById('dh-beacon-hex').textContent = result.hex;
-    document.getElementById('dh-beacon-display').classList.add('show');
-    document.getElementById('dh-beacon-copy-btn').classList.add('show');
-    setStatus('BLE Beacon serial decoded — MAC address ready.');
+    var deveui = beaconDevEui(result.mac);
+    el('dh-beacon-sn').textContent  = digits;
+    el('dh-beacon-mac').textContent = result.mac;
+    el('dh-beacon-hex').textContent = result.hex;
+    show('dh-beacon-display', true);
+    show('dh-beacon-copy-btn', true);
+    showDevEui(deveui);
+    setLinks(deveui, true);             // beacons: Dashboard only
+    setStatus('BLE beacon decoded — DevEUI ' + deveui + '.');
     return true;
+  }
+
+  /* ── LoRaWAN: DevEUI is plain text in the QR (any 16 hex chars) ── */
+  function applyDevEUI(raw) {
+    const m     = (raw || '').match(DEVEUI_RE);
+    const clean = (m ? m[0] : String(raw||'').trim()).replace(/[:\-\s]/g, '').toUpperCase();
+    if (!/^[0-9A-F]{16}$/.test(clean)) return false;
+    show('dh-beacon-display', false);
+    show('dh-beacon-copy-btn', false);
+    showDevEui(clean);
+    setLinks(clean, false);             // LoRaWAN: Dashboard + LNS + Grafana
+    setStatus('DevEUI detected — ' + clean + '.');
+    return true;
+  }
+
+  /* Branch on the toggle. BLE → serial; LoRaWAN → DevEUI text. */
+  function applyScanned(raw) {
+    return (dhMode === 'lora') ? applyDevEUI(raw) : applyBeaconSerial(raw);
   }
 
   window.dhApplyBeaconSerial = function (val) {
@@ -4861,15 +5082,44 @@ window.ebLoadConfig = ebLoadConfig;
     }
   };
 
-  window.dhCopyBeaconMac = function () {
-    const macEl = document.getElementById('dh-beacon-mac');
-    const mac   = macEl ? macEl.textContent : '';
-    if (!mac || mac === '—') return;
-    const statusEl = document.getElementById('dh-beacon-copy-status');
-    function done(msg, cls){ if (statusEl) { statusEl.textContent = msg; statusEl.className = 'copy-status ' + cls + ' vis'; setTimeout(function(){ statusEl.classList.remove('vis'); }, 2500); } }
+  window.dhApplyManual = function () {
+    var inp = el('dh-manual-input');
+    if (inp && inp.value.trim()) {
+      if (!applyDevEUI(inp.value.trim()))
+        setStatus('Enter a valid 16-character hex DevEUI.', true);
+    }
+  };
+
+  /* ── mode toggle ── */
+  window.dhSetMode = function (mode) {
+    dhMode = (mode === 'lora') ? 'lora' : 'ble';
+    var b = el('dh-mode-ble'), l = el('dh-mode-lora');
+    if (b) b.classList.toggle('active', dhMode === 'ble');
+    if (l) l.classList.toggle('active', dhMode === 'lora');
+    var mb = el('dh-manual-ble'),  ml = el('dh-manual-lora');
+    if (mb) mb.style.display = dhMode === 'ble'  ? '' : 'none';
+    if (ml) ml.style.display = dhMode === 'lora' ? '' : 'none';
+    dhResetResults();
+    setStatus(dhMode === 'ble'
+      ? 'BLE beacon mode — scan the QR on the beacon (white-on-teal is fine).'
+      : 'LoRaWAN mode — scan the DevEUI QR code on the device label.');
+  };
+
+  /* ── copy helpers ── */
+  function copyText(text, statusId){
+    var statusEl = el(statusId);
+    function done(msg, cls){ if (statusEl) { statusEl.textContent = msg; statusEl.className = (statusId) + ' ' + cls + ' vis'; setTimeout(function(){ statusEl.classList.remove('vis'); }, 2500); } }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(mac).then(function(){ done('Copied!', 'suc'); }).catch(function(){ done('Copy failed', 'err'); });
+      navigator.clipboard.writeText(text).then(function(){ done('Copied!', 'suc'); }).catch(function(){ done('Copy failed', 'err'); });
     } else { done('Copy failed', 'err'); }
+  }
+  window.dhCopyDevEui = function () {
+    var v = el('dh-deveui-value'); var t = v ? v.textContent : '';
+    if (t && t !== '—') copyText(t, 'dh-deveui-copy-status');
+  };
+  window.dhCopyBeaconMac = function () {
+    var v = el('dh-beacon-mac'); var t = v ? v.textContent : '';
+    if (t && t !== '—') copyText(t, 'dh-beacon-copy-status');
   };
 
   /* ── Zoom: digital via track constraints; CSS transform is display-only ── */
@@ -4969,8 +5219,10 @@ window.ebLoadConfig = ebLoadConfig;
       try { text = await decodeCurrentFrame(); } catch (_) {}
       decoding = false;
       if (text) {
-        if (applyBeaconSerial(text)) { window.dhStopScan(); return; }
-        setStatus('Read "' + String(text).slice(0, 32) + '" — not a beacon serial. Point at the beacon QR code.');
+        if (applyScanned(text)) { window.dhStopScan(); return; }
+        setStatus('Read "' + String(text).slice(0, 32) + '" — ' + (dhMode === 'lora'
+          ? 'not a DevEUI. Point at the LoRaWAN device QR code.'
+          : 'not a beacon serial. Point at the beacon QR code.'));
       }
     }
     rafId = requestAnimationFrame(scanTick);
@@ -5060,6 +5312,182 @@ window.ebLoadConfig = ebLoadConfig;
     else          { dhStartScan(); }
   };
 
+})();
+</script>
+<!-- Device Health Check — parses a device page copied from dashboard.truvami.com.
+     Uses the user's own dashboard login (they Select-All → Copy the page); no API key. -->
+<script>
+(function () {
+  'use strict';
+
+  var MAX_AGE_MS   = 3 * 3600 * 1000;   // 3 hours
+  var BATTERY_PASS = 100;               // percent
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  // "DD.MM.YYYY HH:MM[:SS]" -> Date (device local time, as the dashboard shows it)
+  function parseTs(ts){
+    var m = String(ts).match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if(!m) return null;
+    return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0));
+  }
+  function classify(src){
+    if(/gps|gnss/i.test(src)) return 'GNSS';
+    if(/wi-?fi/i.test(src))   return 'WiFi';
+    if(/ble|bluetooth/i.test(src)) return 'BLE';
+    return 'Other';
+  }
+  function fmtAge(ms){
+    if(ms==null) return '—';
+    if(ms < 0) ms = 0;
+    var mins = Math.round(ms/60000);
+    if(mins < 60) return mins + ' min ago';
+    var h = Math.floor(mins/60), mm = mins%60;
+    return h + 'h ' + mm + 'm ago';
+  }
+
+  function parseDashboard(raw){
+    var flat = String(raw||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+
+    var battery = null, m;
+    m = flat.match(/(\d{1,3})\s*%\s*Firmware version/i);
+    if(m) battery = parseInt(m[1],10);
+    if(battery==null){ m = flat.match(/\b(\d{1,3})\s*%/); if(m) battery = parseInt(m[1],10); }
+
+    var fw = null;
+    m = flat.match(/Firmware version\s+([^\s]+)/i);
+    if(m && m[1] && m[1] !== '-') fw = m[1];
+
+    var hw = null;
+    m = flat.match(/Hardware version\s+([^\s]+)/i);
+    if(m && m[1] && m[1] !== '-') hw = m[1];
+
+    var deveui = null;
+    m = flat.match(/\b([0-9A-Fa-f]{16})\b/);
+    if(m) deveui = m[1].toUpperCase();
+
+    var name = null;
+    m = flat.match(/Back to Trackers\s+[\d.]+\s*-\s*[\d.]+\s+([^\s]+)/i);
+    if(m) name = m[1];
+
+    // Positions table rows: Timestamp ReceivedAt Delay Lat Lon Alt Moving Source
+    var rowRe = /(\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2})(?::\d{2})?\s+\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}(?::\d{2})?\s+\d+\s*s\s+[\d.]+\s+[\d.]+\s+\S+\s+\S+\s+(Wi-?Fi(?:\s?\([^)]*\))?|GPS|GNSS|BLE|Bluetooth)/gi;
+    var positions = [], r;
+    while((r = rowRe.exec(flat)) !== null){ positions.push({ ts:r[1], source:r[2] }); }
+
+    return { battery:battery, fw:fw, hw:hw, deveui:deveui, name:name, positions:positions };
+  }
+
+  function chkRow(ok, name, val, info){
+    var cls = info ? 'dh-chk dh-chk-info' : 'dh-chk';
+    var ico = info ? '<span class="dh-chk-ico" style="color:var(--muted)">•</span>'
+                   : '<span class="dh-chk-ico ' + (ok?'ok':'ko') + '">' + (ok?'✓':'✗') + '</span>';
+    return '<div class="'+cls+'">'+ico+
+           '<div class="dh-chk-body"><div class="dh-chk-name">'+esc(name)+'</div>'+
+           '<div class="dh-chk-val">'+esc(val)+'</div></div></div>';
+  }
+
+  function finishRender(out, overall, rowsHtml, notes){
+    var html = '<div class="dh-verdict '+(overall?'ok':'ko')+'">'+
+      '<span class="dh-verdict-badge">'+(overall?'OK':'KO')+'</span>'+
+      '<span class="dh-verdict-sub">'+(overall?'All checks passed.':'One or more checks failed — see below.')+'</span></div>';
+    html += rowsHtml;
+    html += '<div class="dh-hc-note">' + notes.map(esc).join('<br>') + '</div>';
+    out.innerHTML = html;
+    try { out.scrollIntoView({ behavior:'smooth', block:'nearest' }); } catch(e){}
+  }
+
+  window.dhRunHealthCheck = function(){
+    var out = document.getElementById('dh-hc-result');
+    var ta  = document.getElementById('dh-hc-input');
+    if(!out || !ta) return;
+    var raw = ta.value || '';
+    if(raw.trim().length < 20){
+      out.innerHTML = '<div class="dh-hc-err">Please paste the device page first (Select All → Copy on the dashboard).</div>';
+      return;
+    }
+
+    var p = parseDashboard(raw);
+    if(p.battery==null && p.positions.length===0){
+      out.innerHTML = '<div class="dh-hc-err">Couldn’t read the page. Make sure you copied the whole device page from dashboard.truvami.com (including the positions table).</div>';
+      return;
+    }
+
+    var now = new Date();
+    var latestG=null, latestW=null;
+    p.positions.forEach(function(pos){
+      var d = parseTs(pos.ts); if(!d) return;
+      var k = classify(pos.source);
+      if(k==='GNSS' && (!latestG || d>latestG.d)) latestG={d:d, ts:pos.ts};
+      if(k==='WiFi' && (!latestW || d>latestW.d)) latestW={d:d, ts:pos.ts};
+    });
+
+    var batOK = (p.battery === BATTERY_PASS);
+    var gAge = latestG ? (now - latestG.d) : null;
+    var wAge = latestW ? (now - latestW.d) : null;
+    var gOK = (latestG != null) && (gAge <= MAX_AGE_MS);
+    var wOK = (latestW != null) && (wAge <= MAX_AGE_MS);
+    var overall = batOK && gOK && wOK;
+
+    var rows = '';
+    rows += chkRow(batOK, 'Battery = 100%',
+      (p.battery==null ? 'not found' : p.battery + '%') + (batOK ? '' : '  (required 100%)'));
+    rows += chkRow(gOK, 'GNSS position < 3 h',
+      latestG ? (latestG.ts + '  ·  ' + fmtAge(gAge)) : 'no GNSS/GPS position found');
+    rows += chkRow(wOK, 'WiFi position < 3 h',
+      latestW ? (latestW.ts + '  ·  ' + fmtAge(wAge)) : 'no WiFi position found');
+    rows += chkRow(true, 'Firmware version (info)', p.fw || 'not found', true);
+
+    var notes = [];
+    if(p.name) notes.push('Device: ' + p.name);
+    if(p.deveui){
+      var exp = window.__dhExpectedDevEui;
+      if(exp && exp !== p.deveui) notes.push('⚠ Pasted DevEUI ' + p.deveui + ' does not match the scanned ' + exp + ' — did you copy the right device page?');
+      else notes.push('DevEUI: ' + p.deveui);
+    }
+    if(!latestG && p.positions.length){
+      notes.push('All ' + p.positions.length + ' recent positions are non-GNSS (e.g. WiFi). If GNSS isn’t expected on this hardware, the GNSS rule may not apply.');
+    }
+    notes.push('Checked ' + now.toLocaleString() + ' (device time, from the pasted page).');
+
+    finishRender(out, overall, rows, notes);
+  };
+
+  /* One-tap: read the clipboard, then check. Falls back to the manual textarea. */
+  window.dhPasteAndCheck = function(){
+    var out = document.getElementById('dh-hc-result');
+    var ta  = document.getElementById('dh-hc-input');
+    if(!out || !ta) return;
+    function manualFallback(msg){
+      out.innerHTML = '<div class="dh-hc-err">' + msg + '</div>';
+      var det = document.getElementById('dh-hc-fallback');
+      if(det) det.open = true;
+      try { ta.focus(); } catch(e){}
+    }
+    if(!(navigator.clipboard && navigator.clipboard.readText)){
+      manualFallback('This browser won’t allow one-tap paste. Open “Paste manually instead” below and paste the copied page.');
+      return;
+    }
+    out.innerHTML = '<div class="dh-hc-checking"><span class="dh-spinner"></span>Reading clipboard…</div>';
+    navigator.clipboard.readText().then(function(text){
+      if(!text || text.trim().length < 20){
+        manualFallback('Clipboard looks empty. On the dashboard device page do <b>Select All → Copy</b> first, then tap Paste &amp; Check.');
+        return;
+      }
+      ta.value = text;
+      window.dhRunHealthCheck();
+    }).catch(function(){
+      manualFallback('Couldn’t read the clipboard automatically (iOS may need a tap). Open “Paste manually instead” below and paste.');
+    });
+  };
+
+  window.dhClearHealthCheck = function(){
+    var ta = document.getElementById('dh-hc-input');
+    var out = document.getElementById('dh-hc-result');
+    if(ta) ta.value='';
+    if(out) out.innerHTML='';
+  };
 })();
 </script>
 </body>
