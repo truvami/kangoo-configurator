@@ -1535,7 +1535,7 @@
       </div>
     </div>
 
-    <div id="dh-status">BLE beacon mode — scan the QR on the beacon (white-on-teal is fine).</div>
+    <div id="dh-status">BLE beacon mode — scan the white-on-green QR code on the beacon.</div>
     <div id="dh-scan-passes"></div>
     <div id="dh-error"></div>
 
@@ -1673,7 +1673,8 @@
     <div class="hint-box" style="width:100%;margin-top:4px">
       <strong>BLE beacon:</strong> the QR holds a decimal serial → converted to MAC, and the DevEUI is <span class="mono">BEEF</span> + MAC. Only the <strong>Dashboard</strong> opens for beacons.<br>
       <strong>LoRaWAN device:</strong> the QR holds the DevEUI in plain text; Dashboard, Swisscom LNS and Grafana all open.<br>
-      <strong>Health check:</strong> uses your <span class="mono">dashboard.truvami.com</span> login — no API key. Inverted (white-on-teal) codes are read automatically. Use zoom/torch for small labels.
+      <strong>QR decoding:</strong> BLE beacon mode reads the <strong>white-on-green</strong> (inverted) label; LoRaWAN mode reads the <strong>black-on-white</strong> label. Pick the matching mode before scanning. Use zoom/torch for small labels.<br>
+      <strong>Health check:</strong> uses your <span class="mono">dashboard.truvami.com</span> login — no API key.
     </div>
 
   </div><!-- /#dh-scanner-wrap -->
@@ -2654,7 +2655,7 @@ sm$('sm_bs').value='3A1C2004B018006403E803840E10280002'; sm_decode(); sm_upd();
 (function() {
   if (!('serviceWorker' in navigator)) return;
   const swCode = `
-const CACHE = 'truvami-v2';
+const CACHE = 'truvami-v3';
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.add(self.location.href)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
@@ -5101,8 +5102,8 @@ window.ebLoadConfig = ebLoadConfig;
     if (ml) ml.style.display = dhMode === 'lora' ? '' : 'none';
     dhResetResults();
     setStatus(dhMode === 'ble'
-      ? 'BLE beacon mode — scan the QR on the beacon (white-on-teal is fine).'
-      : 'LoRaWAN mode — scan the DevEUI QR code on the device label.');
+      ? 'BLE beacon mode — scan the white-on-green QR code on the beacon.'
+      : 'LoRaWAN mode — scan the black-on-white DevEUI QR code on the device label.');
   };
 
   /* ── copy helpers ── */
@@ -5171,43 +5172,75 @@ window.ebLoadConfig = ebLoadConfig;
         (inverse), which a standard dark-on-light reader never detects — this is
         the fix for codes that scanned on the old blue labels but not on the
         green/teal plastic. ── */
+
+  /* Grayscale + 2–98% contrast stretch, in place. Sharpens the white-vs-teal
+     separation on glossy beacon plastic; a black-on-white label is already
+     high-contrast so this is a no-op for LoRaWAN. */
+  function enhanceContrast(img) {
+    const d = img.data, n = d.length, count = n >> 2;
+    const gray = new Uint8Array(count);
+    const hist = new Uint32Array(256);
+    for (let i = 0, j = 0; i < n; i += 4, j++) {
+      const g = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8; // ~ITU luma
+      gray[j] = g; hist[g]++;
+    }
+    let acc = 0, lo = 0, hi = 255;
+    const loCut = count * 0.02, hiCut = count * 0.98;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= loCut) { lo = v; break; } }
+    acc = 0;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= hiCut) { hi = v; break; } }
+    if (hi <= lo) { lo = 0; hi = 255; }
+    const scale = 255 / (hi - lo);
+    for (let i = 0, j = 0; i < n; i += 4, j++) {
+      let v = (gray[j] - lo) * scale;
+      v = v < 0 ? 0 : (v > 255 ? 255 : v);
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+  }
+
   async function decodeCurrentFrame() {
     const video = document.getElementById('dh-video');
     if (!video || video.readyState < 2 || !video.videoWidth) return null;
-
     const vw = video.videoWidth, vh = video.videoHeight;
-    const side = Math.floor(Math.min(vw, vh) * 0.92);   // largest ~centered square
-    const sx = Math.floor((vw - side) / 2);
-    const sy = Math.floor((vh - side) / 2);
-    const target = Math.min(720, side);                 // enough detail, cheap to scan
-    canvas.width = target; canvas.height = target;
-    ctx.drawImage(video, sx, sy, side, side, 0, 0, target, target);
 
-    let img;
-    try { img = ctx.getImageData(0, 0, target, target); } catch (_) { return null; }
+    /* Decode the polarity that matches the selected mode:
+         BLE beacon → white-on-green label → inverted (jsQR 'onlyInvert')
+         LoRaWAN    → black-on-white label → normal    (jsQR 'dontInvert') */
+    const inverted = (dhMode !== 'lora');
+    const opt = inverted ? 'onlyInvert' : 'dontInvert';
 
-    /* Primary: jsQR reads inverted codes directly via attemptBoth */
-    if (typeof jsQR === 'function') {
-      const r = jsQR(img.data, target, target, { inversionAttempts: 'attemptBoth' });
-      if (r && r.data) return r.data;
+    function grab(sx, sy, sw, sh, tw, th) {
+      canvas.width = tw; canvas.height = th;
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
+      let img;
+      try { img = ctx.getImageData(0, 0, tw, th); } catch (_) { return null; }
+      enhanceContrast(img);
+      return { img: img, w: tw, h: th };
+    }
+    async function run(o) {
+      if (!o) return null;
+      if (typeof jsQR === 'function') {
+        const r = jsQR(o.img.data, o.w, o.h, { inversionAttempts: opt });
+        return (r && r.data) ? r.data : null;
+      }
+      if (barcodeDetector) {
+        if (inverted) { const d = o.img.data; for (let i = 0; i < d.length; i += 4) { d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2]; } }
+        ctx.putImageData(o.img, 0, 0);
+        try { const c = await barcodeDetector.detect(canvas); if (c && c.length) return c[0].rawValue; } catch (_) {}
+      }
       return null;
     }
 
-    /* Fallback: native BarcodeDetector — try normal, then a manually inverted copy */
-    if (barcodeDetector) {
-      try {
-        let codes = await barcodeDetector.detect(canvas);
-        if (codes && codes.length) return codes[0].rawValue;
-      } catch (_) {}
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) { d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2]; }
-      ctx.putImageData(img, 0, 0);
-      try {
-        let codes = await barcodeDetector.detect(canvas);
-        if (codes && codes.length) return codes[0].rawValue;
-      } catch (_) {}
-    }
-    return null;
+    /* 1) Centered square — most detail on a code held in the scan frame. */
+    const side = Math.floor(Math.min(vw, vh) * 0.92);
+    const t = Math.min(720, side);
+    let res = await run(grab(Math.floor((vw - side) / 2), Math.floor((vh - side) / 2), side, side, t, t));
+    if (res) return res;
+
+    /* 2) Full frame (aspect preserved) — catches an off-centre code. */
+    const fs = Math.min(1, 900 / Math.max(vw, vh));
+    res = await run(grab(0, 0, vw, vh, Math.max(1, Math.round(vw * fs)), Math.max(1, Math.round(vh * fs))));
+    return res;
   }
 
   async function scanTick() {
