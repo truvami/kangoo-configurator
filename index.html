@@ -1535,7 +1535,7 @@
       </div>
     </div>
 
-    <div id="dh-status">BLE beacon mode — scan the white-on-green QR code on the beacon.</div>
+    <div id="dh-status">BLE beacon mode — scan the QR code on the beacon.</div>
     <div id="dh-scan-passes"></div>
     <div id="dh-error"></div>
 
@@ -1673,7 +1673,7 @@
     <div class="hint-box" style="width:100%;margin-top:4px">
       <strong>BLE beacon:</strong> the QR holds a decimal serial → converted to MAC, and the DevEUI is <span class="mono">BEEF</span> + MAC. Only the <strong>Dashboard</strong> opens for beacons.<br>
       <strong>LoRaWAN device:</strong> the QR holds the DevEUI in plain text; Dashboard, Swisscom LNS and Grafana all open.<br>
-      <strong>QR decoding:</strong> BLE beacon mode reads the <strong>white-on-green</strong> (inverted) label; LoRaWAN mode reads the <strong>black-on-white</strong> label. Pick the matching mode before scanning. Use zoom/torch for small labels.<br>
+      <strong>QR decoding:</strong> BLE beacon mode reads the light-ink label on any beacon casing color (blue, teal/green, …) automatically; LoRaWAN mode reads the <strong>black-on-white</strong> label. Pick the matching mode before scanning. Use zoom/torch for small labels.<br>
       <strong>Health check:</strong> uses your <span class="mono">dashboard.truvami.com</span> login — no API key.
     </div>
 
@@ -5102,7 +5102,7 @@ window.ebLoadConfig = ebLoadConfig;
     if (ml) ml.style.display = dhMode === 'lora' ? '' : 'none';
     dhResetResults();
     setStatus(dhMode === 'ble'
-      ? 'BLE beacon mode — scan the white-on-green QR code on the beacon.'
+      ? 'BLE beacon mode — scan the QR code on the beacon.'
       : 'LoRaWAN mode — scan the black-on-white DevEUI QR code on the device label.');
   };
 
@@ -5175,13 +5175,26 @@ window.ebLoadConfig = ebLoadConfig;
 
   /* Grayscale + 2–98% contrast stretch, in place. Sharpens the white-vs-teal
      separation on glossy beacon plastic; a black-on-white label is already
-     high-contrast so this is a no-op for LoRaWAN. */
-  function enhanceContrast(img) {
+     high-contrast so this is a no-op for LoRaWAN.
+
+     useRed=true swaps the standard ITU luma weighting for the red channel
+     alone. Every BLE beacon casing seen so far (blue, teal/green) is a
+     cyan-family plastic — low red, high green/blue — while the laser-etched
+     ink is bright across all channels. Standard luma weights green heaviest
+     (≈0.59) and red least (≈0.30), which is backwards for this material: on
+     a measured teal unit the red channel differs from the ink by ~130/255
+     while ITU luma only differs by ~66/255, because the green/blue channels
+     (where luma puts most of its weight) are close between ink and plastic.
+     Red-channel grayscale roughly doubles the usable contrast on teal/green
+     casings; on a neutral black-on-white LoRaWAN label R≈G≈B so it behaves
+     the same as luma there — used only as a fallback when the normal pass
+     fails, so there is no cost on frames that already decode fine. */
+  function enhanceContrast(img, useRed) {
     const d = img.data, n = d.length, count = n >> 2;
     const gray = new Uint8Array(count);
     const hist = new Uint32Array(256);
     for (let i = 0, j = 0; i < n; i += 4, j++) {
-      const g = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8; // ~ITU luma
+      const g = useRed ? d[i] : ((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8); // red channel, or ~ITU luma
       gray[j] = g; hist[g]++;
     }
     let acc = 0, lo = 0, hi = 255;
@@ -5203,18 +5216,33 @@ window.ebLoadConfig = ebLoadConfig;
     if (!video || video.readyState < 2 || !video.videoWidth) return null;
     const vw = video.videoWidth, vh = video.videoHeight;
 
-    /* Decode the polarity that matches the selected mode:
-         BLE beacon → white-on-green label → inverted (jsQR 'onlyInvert')
-         LoRaWAN    → black-on-white label → normal    (jsQR 'dontInvert') */
+    /* Polarity to try per mode.
+         LoRaWAN    → black-on-white label → normal only ('dontInvert') is enough
+                      and cheapest (single binarization pass).
+         BLE beacon → label is laser-etched light ink on colored plastic, but the
+                      exact color varies by casing (blue vs teal/green units both
+                      exist in the field) and so, in principle, does the resulting
+                      polarity. IMPORTANT: jsQR 1.4.0's own 'onlyInvert' option is
+                      broken — it sets tryInvertedFirst=true but never asks the
+                      binarizer to build the inverted bitmap (that only happens
+                      for 'attemptBoth'/'invertFirst'), so it hands jsQR's scanner
+                      a null matrix and jsQR throws instead of returning null. That
+                      throw was happening on every single frame in BLE mode and
+                      being swallowed by scanTick()'s outer try/catch, so beacon
+                      QR scanning could never succeed regardless of lighting or
+                      casing color — it just looked like "the camera can't read
+                      it". 'attemptBoth' does not have this bug (it always builds
+                      both bitmaps) and additionally removes the need to guess the
+                      label's polarity at all, so use it for BLE. */
     const inverted = (dhMode !== 'lora');
-    const opt = inverted ? 'onlyInvert' : 'dontInvert';
+    const opt = inverted ? 'attemptBoth' : 'dontInvert';
 
-    function grab(sx, sy, sw, sh, tw, th) {
+    function grab(sx, sy, sw, sh, tw, th, useRed) {
       canvas.width = tw; canvas.height = th;
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
       let img;
       try { img = ctx.getImageData(0, 0, tw, th); } catch (_) { return null; }
-      enhanceContrast(img);
+      enhanceContrast(img, useRed);
       return { img: img, w: tw, h: th };
     }
     async function run(o) {
@@ -5231,15 +5259,27 @@ window.ebLoadConfig = ebLoadConfig;
       return null;
     }
 
-    /* 1) Centered square — most detail on a code held in the scan frame. */
+    /* Centered-square crop then full-frame crop (catches an off-centre code),
+       each first with luma grayscale, and — for BLE only, and only if both of
+       those missed — again with red-channel grayscale for low-contrast
+       teal/green casings. Four attempts worst case, but the later ones only
+       run on frames that already failed to decode, so there's no added cost
+       on a frame that reads fine. */
     const side = Math.floor(Math.min(vw, vh) * 0.92);
     const t = Math.min(720, side);
-    let res = await run(grab(Math.floor((vw - side) / 2), Math.floor((vh - side) / 2), side, side, t, t));
-    if (res) return res;
-
-    /* 2) Full frame (aspect preserved) — catches an off-centre code. */
+    const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
     const fs = Math.min(1, 900 / Math.max(vw, vh));
-    res = await run(grab(0, 0, vw, vh, Math.max(1, Math.round(vw * fs)), Math.max(1, Math.round(vh * fs))));
+    const fw = Math.max(1, Math.round(vw * fs)), fh = Math.max(1, Math.round(vh * fs));
+
+    let res = await run(grab(sx, sy, side, side, t, t, false));
+    if (res) return res;
+    res = await run(grab(0, 0, vw, vh, fw, fh, false));
+    if (res) return res;
+    if (!inverted) return null; // LoRaWAN label is already high-contrast; no red-channel pass needed
+
+    res = await run(grab(sx, sy, side, side, t, t, true));
+    if (res) return res;
+    res = await run(grab(0, 0, vw, vh, fw, fh, true));
     return res;
   }
 
