@@ -179,6 +179,7 @@
     /* ── LAYOUT ── */
     .two-col    { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; }
     .two-col-42 { display: grid; grid-template-columns: 420px 1fr; gap: 18px; }
+    #panel-cellular .two-col-42 > .card { min-width: 0; }
 
     /* ── CARD ── */
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
@@ -405,6 +406,7 @@
         <option value="tagxl">Tag XL</option>
         <option value="beaconxl">Beacon XL</option>
         <option value="lumen">Lumen</option>
+        <option value="cellular">Cellular</option>
         <option value="nomadxs">Nomad XS</option>
         <option value="smartlabel">Smart Label v1</option>
       </select>
@@ -602,6 +604,58 @@
       <h2>Explanation</h2>
       <div id="lm_expl" class="steps" style="margin-top:10px"></div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════ CELLULAR ═══════════ -->
+<div id="panel-cellular" class="tab-panel">
+  <div class="page-hdr">
+    <h1>Cellular — Settings Downlink Payload</h1>
+    <p>Cellular tracker based on the ts2 platform: <strong>LoRaWAN</strong> for settings and live uplinks, <strong>LTE-M</strong> for daily bulk upload of the stored buffer, and an <strong>active GNSS receiver</strong> (GNSS-SA) for positioning. Same TLV container as Lumen, plus LTE (<code>0xA1–0xB3</code>) and GPS (<code>0xC1–0xD2</code>) tags.</p>
+  </div>
+  <div class="info-row">
+    <span class="info-pill">Container: <span class="mono">0x4C</span></span>
+    <span class="info-pill">Format: <span class="mono">4C | LENGTH | NR | TLV…</span></span>
+    <span class="info-pill">TLV: <span class="mono">TAG | SIZE | DATA</span></span>
+    <span class="info-pill">Port: <span class="mono">151</span></span>
+    <span class="info-pill">GNSS uplink: <span class="mono">port 10</span></span>
+    <span class="info-pill">16-bit: <span class="mono">big-endian</span></span>
+  </div>
+  <div class="two-col-42">
+    <div class="card">
+      <h2>1 · Choose command</h2>
+      <div class="field" style="margin-top:10px"><label for="cl_sel">Command</label><select id="cl_sel"></select></div>
+      <div class="div"></div>
+      <h2>2 · Fill in data</h2>
+      <div id="cl_form" style="margin-top:10px"></div>
+      <div class="div"></div>
+      <div style="display:grid;gap:7px">
+        <button class="btn-p" style="width:100%" id="cl_addBtn">Add command to payload</button>
+        <button class="btn-s" style="width:100%" id="cl_singleBtn">Generate only this command</button>
+        <button class="btn-d" style="width:100%" id="cl_clearBtn">Clear composed payload</button>
+      </div>
+      <div class="div"></div>
+      <h2>3 · Command queue</h2>
+      <div id="cl_queue" class="cmd-queue" style="margin-top:10px"></div>
+      <p style="font-size:0.75rem;color:var(--muted);margin-top:8px">LENGTH and NR_COMMANDS are calculated automatically.</p>
+    </div>
+    <div class="card">
+      <h2>Generated Payload</h2>
+      <div id="cl_err" class="err-box"></div>
+      <div class="payload-dark" id="cl_out" style="margin-top:12px">—</div>
+      <div class="btn-row">
+        <button class="btn-dk" id="cl_copyBtn">Copy payload</button>
+        <button class="btn-dk" id="cl_copySpBtn">Copy with spaces</button>
+      </div>
+      <div class="div"></div>
+      <h2>Explanation</h2>
+      <div id="cl_expl" class="steps" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <h2>All Cellular settings</h2>
+    <div class="card-sub">Every TLV the Cellular firmware understands, grouped by function. Setters marked ↺ answer automatically with their getter in the next settings uplink.</div>
+    <div id="cl_ref"></div>
   </div>
 </div>
 
@@ -1739,6 +1793,7 @@ const PROTO_LABELS = {
   tagxl:      'TLV · p151',
   beaconxl:   'TLV · p151 · Eddystone',
   lumen:      'TLV v2 · p151',
+  cellular:   'TLV v2 · p151 · LTE + GNSS',
   nomadxs:    'p128 · BE',
   smartlabel: 'p128 · BE',
 };
@@ -2232,7 +2287,7 @@ function makeTlvEngine(prefix, cmdArray) {
     if (!state.q.length) { el.innerHTML=`<div class="cmd-card"><div class="cmd-sub">No commands in queue.</div></div>`; return; }
     el.innerHTML = state.q.map((item,i) => {
       const tlv=[item.tag,item.size,...item.dataBytes].map(xh).join(' ');
-      return `<div class="cmd-card"><div class="cmd-top"><strong>${i+1}. ${item.commandName}</strong><span class="badge ${item.cat.toLowerCase()}">${item.cat}</span></div><div class="cmd-sub">${item.summary}</div><div class="cmd-mono">${tlv}</div><div class="cmd-btns" style="margin-top:7px"><button class="btn-s" onclick="${prefix}_mv(${i},-1)">↑</button><button class="btn-s" onclick="${prefix}_mv(${i},1)">↓</button><button class="btn-d" onclick="${prefix}_rm(${i})">Remove</button></div></div>`;
+      return `<div class="cmd-card"><div class="cmd-top"><strong>${i+1}. ${item.commandName}</strong><span class="badge ${item.cat.toLowerCase()}">${item.cat}</span></div><div class="cmd-sub">${xesc(item.summary)}</div><div class="cmd-mono">${tlv}</div><div class="cmd-btns" style="margin-top:7px"><button class="btn-s" onclick="${prefix}_mv(${i},-1)">↑</button><button class="btn-s" onclick="${prefix}_mv(${i},1)">↓</button><button class="btn-d" onclick="${prefix}_rm(${i})">Remove</button></div></div>`;
     }).join('');
   }
 
@@ -2246,6 +2301,8 @@ function makeTlvEngine(prefix, cmdArray) {
 
   function bldCmd(cmd) {
     const b = cmd.build();
+    // size:null marks a variable-length TLV (e.g. strings); SIZE is taken from the built data
+    if(cmd.size === null) { if(b.dataBytes.length > 255) throw new Error(`${cmd.name}: value too long.`); return {...b, size:b.dataBytes.length}; }
     if(b.dataBytes.length !== cmd.size) throw new Error(`${cmd.name}: expected ${cmd.size} byte(s), got ${b.dataBytes.length}.`);
     return b;
   }
@@ -2253,10 +2310,12 @@ function makeTlvEngine(prefix, cmdArray) {
   function init(selEl, formEl) {
     const sel = document.getElementById(selEl);
     const form = document.getElementById(formEl);
-    ['Setter','Getter','Runner'].forEach(cat => {
-      const og = document.createElement('optgroup'); og.label = cat;
-      cmdArray.filter(c => c.cat === cat).forEach(c => {
-        const o = document.createElement('option'); o.value = c.id; o.textContent = `${cat} · ${c.name} (0x${xh(c.tag)})`; og.appendChild(o);
+    // Commands with a `group` are listed by functional group, otherwise by Setter/Getter/Runner
+    const groups = cmdArray.some(c => c.group) ? [...new Set(cmdArray.map(c => c.group))] : ['Setter','Getter','Runner'];
+    groups.forEach(g => {
+      const og = document.createElement('optgroup'); og.label = g;
+      cmdArray.filter(c => (c.group || c.cat) === g).forEach(c => {
+        const o = document.createElement('option'); o.value = c.id; o.textContent = `${c.cat} · ${c.name} (0x${xh(c.tag)})`; og.appendChild(o);
       });
       sel.appendChild(og);
     });
@@ -2572,6 +2631,170 @@ function lmBleUpdatePreview(){
 makeTlvEngine('lm', LM).init('lm_sel','lm_form');
 
 /* ════════════════════════════════════════
+   CELLULAR COMMANDS (ts2: LoRaWAN + LTE + active GNSS)
+════════════════════════════════════════ */
+const CL_METHODS = [['wifi','WiFi',1],['ble','BLE',2],['gna','GNSS-NA',4],['gsa','GNSS-SA (GPS)',8]];
+function clMethodChecks(prefix, checked) {
+  return `<div class="checklist">${CL_METHODS.map(([k,l,b])=>`<label class="check-card"><input type="checkbox" id="${prefix}_${k}"${checked.includes(k)?' checked':''}> ${l} (bit ${Math.log2(b)})</label>`).join('')}</div>`;
+}
+function clMethodMask(prefix) { return CL_METHODS.reduce((m,[k,,b]) => m | (xc(`${prefix}_${k}`) ? b : 0), 0); }
+function clAscii(id, label, max) {
+  const s = document.getElementById(id).value;
+  if (!s.length) throw new Error(`${label} must not be empty.`);
+  if (s.length > max) throw new Error(`${label}: max ${max} characters.`);
+  const b = Array.from(s).map(c => c.charCodeAt(0));
+  if (b.some(v => v < 0x20 || v > 0x7E)) throw new Error(`${label}: printable ASCII only.`);
+  return b;
+}
+function clDop(id) {
+  const raw = document.getElementById(id).value.trim();
+  if (raw === '') throw new Error(`${id}: value is required (use 0 to disable).`);
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v < 0 || v > 6553.5) throw new Error(`${id}: must be 0–6553.5.`);
+  return Math.round(v * 10);
+}
+function clGet(group, id, name, tag, desc) {
+  return {group, id, cat:'Getter', name, tag, size:0, desc, form(){return xeh(this.desc);}, build(){return xnd(this, name);}};
+}
+const CL_CONST = ['Default (GPS+QZSS+SBAS+Galileo+BeiDou)','GPS (+QZSS+SBAS)','GPS + Galileo','GPS + GLONASS','GPS + BeiDou','GPS + Galileo + BeiDou','GPS + Galileo + GLONASS','GPS + Galileo + GLONASS + BeiDou'];
+const CL_DR = {0:'DR5 SF7',1:'DR4 SF8',2:'DR3 SF9',3:'DR2 SF10',4:'DR1 SF11',5:'DR0 SF12',6:'DR1–3 array',7:'ADR'};
+
+const CL = [
+  /* ── Localization ── */
+  {group:'Localization',id:'cl_setFlags',cat:'Setter',name:'Set Device Flags',tag:0x20,size:1,
+   desc:'Coarse on/off switches. GNSS_ENABLE turns the active GNSS (GNSS-SA) on/off for the Moving and Steady timers. WiFi and BLE scanning are not used on Cellular.',
+   form(){return`<div class="checklist"><label class="check-card"><input type="checkbox" id="clf_gnss" checked> GNSS_ENABLE (bit 1)</label><label class="check-card"><input type="checkbox" id="clf_acc" checked> ACCELERATION_ENABLE (bit 3)</label><label class="check-card"><input type="checkbox" id="clf_blefwu"> BLE_FWU_ENABLED (bit 0)</label><label class="check-card"><input type="checkbox" id="clf_wifi"> WIFI_ENABLE (bit 2)</label><label class="check-card"><input type="checkbox" id="clf_ble"> BLE_ENABLE (bit 4)</label></div>`;},
+   build(){const v=(xc('clf_blefwu')?1:0)|(xc('clf_gnss')?2:0)|(xc('clf_wifi')?4:0)|(xc('clf_acc')?8:0)|(xc('clf_ble')?16:0);return{tag:this.tag,size:this.size,dataBytes:[v],summary:`Flags=0x${xh(v)} (${v.toString(2).padStart(8,'0')})`,details:[`bit0 BLE_FWU=${v&1?1:0}`,`bit1 GNSS=${v&2?1:0}`,`bit2 WiFi=${v&4?1:0}`,`bit3 ACC=${v&8?1:0}`,`bit4 BLE=${v&16?1:0}`]};}},
+  {group:'Localization',id:'cl_setTrack',cat:'Setter',name:'Set Tracking Intervals',tag:0x21,size:4,
+   desc:'Moving and Steady localization periods in seconds (uint16 BE). Keeps the method/cont_op masks. On Cellular the LoRaWAN minimums do not apply; 0 disables the timer.',
+   form(){return`<div class="frow"><div class="field"><label for="clt_mov">MOVING_INTERVAL (s)</label><input id="clt_mov" type="number" min="0" max="65535" value="300"></div><div class="field"><label for="clt_ste">STEADY_INTERVAL (s)</label><input id="clt_ste" type="number" min="0" max="65535" value="7200"></div></div>`;},
+   build(){const m=xn('clt_mov',0,65535),s=xn('clt_ste',0,65535);return{tag:this.tag,size:this.size,dataBytes:[...xw(m),...xw(s)],summary:`MOVING=${m}s STEADY=${s}s`,details:[`MOVING=${xwh(m)}`,`STEADY=${xwh(s)}`]};}},
+  {group:'Localization',id:'cl_setScanTimer',cat:'Setter',name:'Set Scan Timer Instance',tag:0x32,size:5,
+   desc:'Full control of one localization timer: period, methods run on each scan and methods kept powered between scans (cont_op). GNSS-SA in cont_op keeps the GPS receiver hot while in that motion state (faster fixes, more power). Takes effect on the next moving/steady change. Quick instances store positions for LTE upload but do not send them over LoRaWAN.',
+   form(){return`<div class="frow"><div class="field"><label for="clst_type">Instance</label><select id="clst_type"><option value="1">1 — Moving</option><option value="2">2 — Steady</option><option value="3">3 — Quick moving</option><option value="4">4 — Quick steady</option></select></div><div class="field"><label for="clst_period">Period (s, 0 = disabled)</label><input id="clst_period" type="number" min="0" max="65535" value="300"></div></div><div class="field"><label>method — run on each scan</label>${clMethodChecks('clst_m',['gsa'])}</div><div class="field"><label>cont_op — keep powered between scans</label>${clMethodChecks('clst_c',[])}</div>`;},
+   build(){const t=xn('clst_type',1,4),p=xn('clst_period',0,65535),meth=clMethodMask('clst_m'),cont=clMethodMask('clst_c');const names={1:'Moving',2:'Steady',3:'Quick moving',4:'Quick steady'};return{tag:this.tag,size:this.size,dataBytes:[t,...xw(p),meth,cont],summary:`${names[t]}: period=${p}s method=0x${xh(meth)} cont_op=0x${xh(cont)}`,details:[`type=${xh(t)} (${names[t]})`,`period=${xwh(p)}`,`method=${xh(meth)}`,`cont_op=${xh(cont)}`]};}},
+  clGet('Localization','cl_gFlags','Get Device Flags',0x40,'Request the device flags.'),
+  clGet('Localization','cl_gTrack','Get Tracking Intervals',0x41,'Request the Moving and Steady periods.'),
+  {group:'Localization',id:'cl_rLocScan',cat:'Runner',name:'Run Location Scan',tag:0x82,size:0,desc:'Trigger an immediate Steady localization (uses the Steady method mask).',form(){return xeh(this.desc);},build(){return xnd(this,'Run Location Scan');}},
+
+  /* ── Active GNSS ── */
+  {group:'Active GNSS',id:'cl_setGpsCfg',cat:'Setter',name:'Set GPS Config',tag:0xC1,size:10,
+   desc:'Acquisition parameters of the GPS receiver. A scan ends as soon as any enabled DOP threshold is met, after the cool-off following the first fix, or when the scan duration elapses. DOP 0 disables that criterion. ↺ answers with 0xD1.',
+   form(){return`<div class="frow"><div class="field"><label for="clg_scan">Scan duration (s)</label><input id="clg_scan" type="number" min="1" max="65535" value="120"></div><div class="field"><label for="clg_cool">Cool-off after first fix (s, 0 = off)</label><input id="clg_cool" type="number" min="0" max="65535" value="20"></div></div><div class="frow"><div class="field"><label for="clg_hdop">HDOP ≤ (0 = off)</label><input id="clg_hdop" type="number" min="0" step="0.1" value="0"></div><div class="field"><label for="clg_vdop">VDOP ≤ (0 = off)</label><input id="clg_vdop" type="number" min="0" step="0.1" value="0"></div></div><div class="field"><label for="clg_pdop">PDOP ≤ (0 = off)</label><input id="clg_pdop" type="number" min="0" step="0.1" value="2.5"></div>`;},
+   build(){const sc=xn('clg_scan',1,65535),co=xn('clg_cool',0,65535),h=clDop('clg_hdop'),v=clDop('clg_vdop'),p=clDop('clg_pdop');return{tag:this.tag,size:this.size,dataBytes:[...xw(sc),...xw(co),...xw(h),...xw(v),...xw(p)],summary:`scan=${sc}s cooloff=${co}s HDOP≤${h/10||'off'} VDOP≤${v/10||'off'} PDOP≤${p/10||'off'}`,details:[`scan_duration=${xwh(sc)}`,`cooloff_duration=${xwh(co)}`,`hdop=${xwh(h)} (×10)`,`vdop=${xwh(v)} (×10)`,`pdop=${xwh(p)} (×10)`]};}},
+  {group:'Active GNSS',id:'cl_setGpsConst',cat:'Setter',name:'Set GPS Constellation & Power Mode',tag:0xC2,size:2,
+   desc:'Satellite systems used by the u-blox receiver and its power profile. Applied each time the receiver powers on (next scan). ↺ answers with 0xD2.',
+   form(){return`<div class="field"><label for="clc_const">Constellation</label><select id="clc_const">${CL_CONST.map((n,i)=>`<option value="${i}">${i} — ${n}</option>`).join('')}</select></div><div class="field"><label for="clc_pm">Power mode</label><select id="clc_pm"><option value="0">0 — Full power (continuous tracking)</option><option value="1">1 — Low power (PSMCT cyclic tracking)</option></select></div>`;},
+   build(){const c=xn('clc_const',0,7),pm=xn('clc_pm',0,1);return{tag:this.tag,size:this.size,dataBytes:[c,pm],summary:`${CL_CONST[c]} · ${pm?'Low power':'Full power'}`,details:[`constellation=${xh(c)}`,`power_mode=${xh(pm)}`]};}},
+  clGet('Active GNSS','cl_gGpsCfg','Get GPS Config',0xD1,'Request scan duration, cool-off and DOP thresholds (10 bytes).'),
+  clGet('Active GNSS','cl_gGpsConst','Get GPS Constellation & Power Mode',0xD2,'Request constellation and power mode (2 bytes).'),
+  clGet('Active GNSS','cl_gScan','Get Scan Counts',0x4B,'Request the GNSS scan counter (uint16) and WiFi scan counter (uint16).'),
+
+  /* ── LTE ── */
+  {group:'LTE',id:'cl_setApn',cat:'Setter',name:'Set LTE APN',tag:0xA1,size:null,
+   desc:'Network access point name, ASCII, up to 32 characters (variable length TLV). ↺ answers with 0xB1.',
+   form(){return`<div class="field"><label for="cla_apn">APN</label><input id="cla_apn" type="text" maxlength="32" placeholder="e.g. iot.1nce.net"></div>`;},
+   build(){const b=clAscii('cla_apn','APN',32);return{tag:this.tag,dataBytes:b,summary:`APN="${String.fromCharCode(...b)}" (${b.length} bytes)`,details:[`ASCII: ${b.map(xh).join(' ')}`]};}},
+  {group:'LTE',id:'cl_setApiKey',cat:'Setter',name:'Set LTE API Key',tag:0xA2,size:null,
+   desc:'API key used for the HTTPS upload, ASCII, up to 32 characters (variable length TLV). Sent in clear over LoRaWAN downlink. ↺ answers with 0xB2.',
+   form(){return`<div class="field"><label for="clk_key">API key</label><input id="clk_key" type="text" maxlength="32" autocomplete="off"></div>`;},
+   build(){const b=clAscii('clk_key','API key',32);return{tag:this.tag,dataBytes:b,summary:`API key (${b.length} bytes)`,details:[`ASCII: ${b.map(xh).join(' ')}`]};}},
+  {group:'LTE',id:'cl_setLteCon',cat:'Setter',name:'Set LTE Connection',tag:0xA3,size:9,
+   desc:'Daily upload session: at the given UTC time the device connects over LTE and POSTs up to chunk-size stored records. On failure it retries after the back-off period, up to the retry count, then waits for the next day. ↺ answers with 0xB3.',
+   form(){return`<div class="frow"><div class="field"><label for="clc_totd">Upload time (UTC)</label><input id="clc_totd" type="time" value="02:00"></div><div class="field"><label for="clc_chunk">Chunk size (records / session)</label><input id="clc_chunk" type="number" min="1" max="65535" value="100"></div></div><div class="frow"><div class="field"><label for="clc_tmo">Connection timeout (s)</label><input id="clc_tmo" type="number" min="1" max="65535" value="180"></div><div class="field"><label for="clc_back">Retry back-off (min)</label><input id="clc_back" type="number" min="0" max="65535" value="30"></div></div><div class="field"><label for="clc_retry">Retry count</label><input id="clc_retry" type="number" min="0" max="255" value="0"></div><p style="font-size:0.75rem;color:var(--warn)">Firmware note: the current ts2 build ignores the retry byte and stores the high byte of the back-off instead (retries = back-off ÷ 256). Below 256 min back-off that is 0 retries; the summary shows the value the device will actually use.</p>`;},
+   build(){const t=document.getElementById('clc_totd').value;if(!/^\d{2}:\d{2}$/.test(t))throw new Error('Upload time must be HH:MM.');const [hh,mm]=t.split(':').map(Number);const totd=hh*60+mm;const ch=xn('clc_chunk',1,65535),to=xn('clc_tmo',1,65535),bo=xn('clc_back',0,65535),rc=xn('clc_retry',0,255);const eff=bo>>8;const rcTxt=rc===eff?`${rc}`:`${eff} (affected FW; requested ${rc})`;return{tag:this.tag,size:this.size,dataBytes:[...xw(totd),...xw(ch),...xw(to),...xw(bo),rc],summary:`upload ${t} UTC · ${ch} rec · timeout ${to}s · back-off ${bo}min × ${rcTxt}`,details:[`uplink_totd=${xwh(totd)} (${totd} min after 00:00 UTC)`,`uplink_chunk_size=${xwh(ch)}`,`connection_timeout=${xwh(to)}`,`uplink_backoff_period=${xwh(bo)}`,`uplink_retry_count=${xh(rc)}`,`effective retries on affected FW = back-off >> 8 = ${eff}`]};}},
+  clGet('LTE','cl_gApn','Get LTE APN',0xB1,'Request the configured APN (ASCII).'),
+  clGet('LTE','cl_gApiKey','Get LTE API Key',0xB2,'Request the configured API key (ASCII).'),
+  clGet('LTE','cl_gLteCon','Get LTE Connection',0xB3,'Request upload time, chunk size, timeout, back-off and retry count (9 bytes).'),
+
+  /* ── LoRaWAN ── */
+  {group:'LoRaWAN',id:'cl_setDR',cat:'Setter',name:'Set Data Rate',tag:0x28,size:1,desc:'LoRaWAN data rate or ADR mode (0–7).',
+   form(){return`<div class="field"><label for="cldr_v">DATA_RATE</label><select id="cldr_v">${Object.entries(CL_DR).map(([v,n])=>`<option value="${v}"${v==='2'?' selected':''}>${v} — ${n}</option>`).join('')}</select></div>`;},
+   build(){const v=xn('cldr_v',0,7);return{tag:this.tag,size:this.size,dataBytes:[v],summary:`DATA_RATE=${CL_DR[v]}`,details:[`=${xh(v)}`]};}},
+  clGet('LoRaWAN','cl_gDR','Get Data Rate',0x4E,'Request the current data rate / ADR setting.'),
+
+  /* ── Motion ── */
+  {group:'Motion',id:'cl_setMotionV2',cat:'Setter',name:'Set Motion Detection Plan (v2)',tag:0x30,size:7,
+   desc:'Accelerometer threshold (30–16000 mg) and sliding-window movement detection. ↺ answers with 0x60.',
+   form(){return`<div class="frow"><div class="field"><label for="clm_thr">acc_thresh_mg</label><input id="clm_thr" type="number" min="30" max="16000" value="100"></div><div class="field"><label for="clm_slice">slice_time_s</label><input id="clm_slice" type="number" min="1" max="255" value="1"></div></div><div class="frow"><div class="field"><label for="clm_win">window_slice_count</label><input id="clm_win" type="number" min="1" max="255" value="5"></div><div class="field"><label for="clm_req">window_slice_required</label><input id="clm_req" type="number" min="1" max="255" value="3"></div></div><div class="frow"><div class="field"><label for="clm_start">start_move_win_count</label><input id="clm_start" type="number" min="1" max="255" value="3"></div><div class="field"><label for="clm_stop">stop_move_win_count</label><input id="clm_stop" type="number" min="1" max="255" value="4"></div></div>`;},
+   build(){const thr=xn('clm_thr',30,16000),sl=xn('clm_slice',1,255),wn=xn('clm_win',1,255),rq=xn('clm_req',1,255),st=xn('clm_start',1,255),sp=xn('clm_stop',1,255);if(rq>wn)throw new Error('window_slice_required must be ≤ window_slice_count.');return{tag:this.tag,size:this.size,dataBytes:[...xw(thr),sl,wn,rq,st,sp],summary:`thr=${thr}mg slice=${sl}s win=${wn} req=${rq} start=${st} stop=${sp}`,details:[`acc_thresh=${xwh(thr)}`,`slice_time=${xh(sl)}`,`window_slices=${xh(wn)}`,`required_slices=${xh(rq)}`,`start_windows=${xh(st)}`,`stop_windows=${xh(sp)}`]};}},
+  clGet('Motion','cl_gMotionV2','Get Motion Detection Plan (v2)',0x60,'Request the full v2 motion detection plan.'),
+
+  /* ── Battery & storage ── */
+  {group:'Battery & Storage',id:'cl_setBattLvl',cat:'Setter',name:'Set Battery Thresholds',tag:0x29,size:2,desc:'Critical and low battery thresholds in %. Below low: no moving localizations. Below critical: no localizations. ↺ answers with 0x4C.',
+   form(){return`<div class="frow"><div class="field"><label for="clbl_crit">Critical (%)</label><input id="clbl_crit" type="number" min="0" max="100" value="20"></div><div class="field"><label for="clbl_low">Low (%)</label><input id="clbl_low" type="number" min="0" max="100" value="40"></div></div>`;},
+   build(){const c=xn('clbl_crit',0,100),l=xn('clbl_low',0,100);if(c>=l)throw new Error('Critical must be < Low threshold.');return{tag:this.tag,size:this.size,dataBytes:[c,l],summary:`Critical=${c}% Low=${l}%`,details:[`critical=${xh(c)}`,`low=${xh(l)}`]};}},
+  {group:'Battery & Storage',id:'cl_setBatch',cat:'Setter',name:'Set Batch Size',tag:0x2B,size:1,desc:'Number of stored records re-sent per LoRaWAN batch. ↺ answers with 0x50.',
+   form(){return`<div class="field"><label for="clbc_v">BATCH_SIZE (records)</label><input id="clbc_v" type="number" min="1" max="255" value="10"></div>`;},
+   build(){const v=xn('clbc_v',1,255);return{tag:this.tag,size:this.size,dataBytes:[v],summary:`Batch size=${v}`,details:[`=${xh(v)}`]};}},
+  clGet('Battery & Storage','cl_gBatt','Get Battery',0x45,'Request battery voltage (uint16 mV).'),
+  clGet('Battery & Storage','cl_gBattLvl','Get Battery Thresholds',0x4C,'Request critical / low thresholds.'),
+  clGet('Battery & Storage','cl_gBatch','Get Batch Size',0x50,'Request the batch size.'),
+  clGet('Battery & Storage','cl_gBuffer','Get Buffer Level',0x63,'Request the number of records held in flash.'),
+  {group:'Battery & Storage',id:'cl_rClear',cat:'Runner',name:'Clear Stored Buffer',tag:0x83,size:0,desc:'Erase all stored records (they will not be uploaded over LTE).',form(){return xeh(this.desc);},build(){return xnd(this,'Clear Stored Buffer');}},
+
+  /* ── Device ── */
+  {group:'Device',id:'cl_setHB',cat:'Setter',name:'Set Heartbeat Interval',tag:0x23,size:1,desc:'Heartbeat interval in hours (1–255). ↺ answers with 0x43.',
+   form(){return`<div class="field"><label for="clh_h">HEARTBEAT_INTERVAL (hours)</label><input id="clh_h" type="number" min="1" max="255" value="6"></div>`;},
+   build(){const h=xn('clh_h',1,255);return{tag:this.tag,size:this.size,dataBytes:[h],summary:`HEARTBEAT=${h}h`,details:[`=${xh(h)}`]};}},
+  clGet('Device','cl_gHB','Get Heartbeat Interval',0x43,'Request the heartbeat interval.'),
+  clGet('Device','cl_gFw','Get Firmware Version',0x46,'Request FW major/minor/patch and HW version.'),
+  clGet('Device','cl_gRstCnt','Get Reset Count',0x49,'Request the reset counter.'),
+  clGet('Device','cl_gRstCause','Get Reset Cause',0x4A,'Request the last reset cause.'),
+  {group:'Device',id:'cl_rReset',cat:'Runner',name:'Reset Device',tag:0x81,size:0,desc:'Reboot the device.',form(){return xeh(this.desc);},build(){return xnd(this,'Reset Device');}},
+];
+makeTlvEngine('cl', CL).init('cl_sel','cl_form');
+
+/* Cellular settings reference: [set tag, get tag, name, size, fields, range/default] */
+const CL_REF = {
+  'Localization': [
+    ['0x20 ↺','0x40','Device flags','1','bit0 BLE FWU · bit1 GNSS · bit2 WiFi · bit3 ACC · bit4 BLE','GNSS on/off for Moving + Steady'],
+    ['0x21 ↺','0x41','Tracking intervals','4','moving u16 s · steady u16 s','0–65535 (0 = off) · 300 / 7200'],
+    ['0x32','—','Scan timer instance','3–5','type u8 · period u16 s · method u8 · cont_op u8','type 1–4 · method bit3 = GNSS-SA · missing bytes = 0'],
+    ['0x82','—','Run location scan','0','—','Steady localization now'],
+  ],
+  'Active GNSS': [
+    ['0xC1 ↺','0xD1','GPS config','2–10','scan_duration u16 s · cooloff u16 s · hdop · vdop · pdop u16 (DOP×10)','partial write allowed · 0 = criterion off'],
+    ['0xC2 ↺','0xD2','Constellation & power mode','2','constellation u8 · power_mode u8','0–7 (0 = GPS+Gal+BDS) · 0 full / 1 low power'],
+    ['—','0x4B','Scan counts','4','gnss u16 · wifi u16','read only'],
+    ['—','port 10','GNSS position uplink','20','status · lat · lon · alt · ts · voltage · ttf · pdop · sats','lat/lon 1e-6°, alt dm'],
+  ],
+  'LTE': [
+    ['0xA1 ↺','0xB1','APN','1–32','ASCII','—'],
+    ['0xA2 ↺','0xB2','API key','1–32','ASCII','—'],
+    ['0xA3 ↺','0xB3','Connection','1–9','upload time u16 min UTC · chunk u16 · timeout u16 s · back-off u16 min · retries u8','partial write allowed'],
+    ['0xA4','0xB5','Silence','—','reserved','not implemented in firmware'],
+  ],
+  'LoRaWAN': [
+    ['0x28','0x4E','Data rate','1','0 DR5 … 5 DR0 · 6 DR1–3 · 7 ADR','0–7'],
+  ],
+  'Motion': [
+    ['0x30 ↺','0x60','Motion plan v2','7','acc_thresh u16 mg · slice s · win · req · start · stop','30–16000 mg · 1 / 5 / 3 / 3 / 4'],
+  ],
+  'Battery & Storage': [
+    ['0x29 ↺','0x4C','Battery thresholds','2','critical % · low %','20 / 40'],
+    ['0x2B ↺','0x50','Batch size','1','records','1–255'],
+    ['—','0x45','Battery','2','voltage u16 mV','read only'],
+    ['—','0x63','Buffer level','2','records in flash','read only'],
+    ['0x83','—','Clear stored buffer','0','—','action'],
+  ],
+  'Device': [
+    ['0x23 ↺','0x43','Heartbeat interval','1','hours','1–255 · 6'],
+    ['—','0x46','Firmware version','4','fw major · minor · patch · hw','read only'],
+    ['—','0x49','Reset count','2','u16','read only'],
+    ['—','0x4A','Reset cause','4','u32','read only'],
+    ['0x81','—','Reset device','0','—','action'],
+  ],
+};
+(function clRenderRef(){
+  const el = document.getElementById('cl_ref'); if (!el) return;
+  el.innerHTML = Object.entries(CL_REF).map(([g, rows]) =>
+    `<h3 style="margin:16px 0 6px">${xesc(g)}</h3><div style="overflow-x:auto"><table class="ref-table"><thead><tr><th>Set</th><th>Get</th><th>Setting</th><th>Size</th><th>Fields</th><th>Range · default</th></tr></thead><tbody>${
+      rows.map(r => `<tr>${r.map(c => `<td>${xesc(c)}</td>`).join('')}</tr>`).join('')
+    }</tbody></table></div>`).join('');
+})();
+
+/* ════════════════════════════════════════
    SMART LABEL
 ════════════════════════════════════════ */
 const sm_sfL={0:'DR5 EU_SF7',1:'DR4 EU_SF8',2:'DR3 EU_SF9 US_SF7',3:'DR2 EU_SF10 US_SF8',4:'DR1 EU_SF11 US_SF9',5:'DR0 EU_SF12',6:'DR1-3 array',7:'reserved'};
@@ -2655,7 +2878,7 @@ sm$('sm_bs').value='3A1C2004B018006403E803840E10280002'; sm_decode(); sm_upd();
 (function() {
   if (!('serviceWorker' in navigator)) return;
   const swCode = `
-const CACHE = 'truvami-v3';
+const CACHE = 'truvami-v4';
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.add(self.location.href)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
