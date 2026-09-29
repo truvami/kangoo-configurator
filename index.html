@@ -2287,7 +2287,7 @@ function makeTlvEngine(prefix, cmdArray) {
     if (!state.q.length) { el.innerHTML=`<div class="cmd-card"><div class="cmd-sub">No commands in queue.</div></div>`; return; }
     el.innerHTML = state.q.map((item,i) => {
       const tlv=[item.tag,item.size,...item.dataBytes].map(xh).join(' ');
-      return `<div class="cmd-card"><div class="cmd-top"><strong>${i+1}. ${item.commandName}</strong><span class="badge ${item.cat.toLowerCase()}">${item.cat}</span></div><div class="cmd-sub">${item.summary}</div><div class="cmd-mono">${tlv}</div><div class="cmd-btns" style="margin-top:7px"><button class="btn-s" onclick="${prefix}_mv(${i},-1)">↑</button><button class="btn-s" onclick="${prefix}_mv(${i},1)">↓</button><button class="btn-d" onclick="${prefix}_rm(${i})">Remove</button></div></div>`;
+      return `<div class="cmd-card"><div class="cmd-top"><strong>${i+1}. ${item.commandName}</strong><span class="badge ${item.cat.toLowerCase()}">${item.cat}</span></div><div class="cmd-sub">${xesc(item.summary)}</div><div class="cmd-mono">${tlv}</div><div class="cmd-btns" style="margin-top:7px"><button class="btn-s" onclick="${prefix}_mv(${i},-1)">↑</button><button class="btn-s" onclick="${prefix}_mv(${i},1)">↓</button><button class="btn-d" onclick="${prefix}_rm(${i})">Remove</button></div></div>`;
     }).join('');
   }
 
@@ -2647,7 +2647,9 @@ function clAscii(id, label, max) {
   return b;
 }
 function clDop(id) {
-  const v = Number(document.getElementById(id).value);
+  const raw = document.getElementById(id).value.trim();
+  if (raw === '') throw new Error(`${id}: value is required (use 0 to disable).`);
+  const v = Number(raw);
   if (!Number.isFinite(v) || v < 0 || v > 6553.5) throw new Error(`${id}: must be 0–6553.5.`);
   return Math.round(v * 10);
 }
@@ -2699,8 +2701,8 @@ const CL = [
    build(){const b=clAscii('clk_key','API key',32);return{tag:this.tag,dataBytes:b,summary:`API key (${b.length} bytes)`,details:[`ASCII: ${b.map(xh).join(' ')}`]};}},
   {group:'LTE',id:'cl_setLteCon',cat:'Setter',name:'Set LTE Connection',tag:0xA3,size:9,
    desc:'Daily upload session: at the given UTC time the device connects over LTE and POSTs up to chunk-size stored records. On failure it retries after the back-off period, up to the retry count, then waits for the next day. ↺ answers with 0xB3.',
-   form(){return`<div class="frow"><div class="field"><label for="clc_totd">Upload time (UTC)</label><input id="clc_totd" type="time" value="02:00"></div><div class="field"><label for="clc_chunk">Chunk size (records / session)</label><input id="clc_chunk" type="number" min="1" max="65535" value="100"></div></div><div class="frow"><div class="field"><label for="clc_tmo">Connection timeout (s)</label><input id="clc_tmo" type="number" min="1" max="65535" value="180"></div><div class="field"><label for="clc_back">Retry back-off (min)</label><input id="clc_back" type="number" min="0" max="65535" value="30"></div></div><div class="field"><label for="clc_retry">Retry count</label><input id="clc_retry" type="number" min="0" max="255" value="3"></div><p style="font-size:0.75rem;color:var(--warn)">Firmware note: the current ts2 build stores the retry count from the back-off field — set both to values you can live with until this is fixed.</p>`;},
-   build(){const t=document.getElementById('clc_totd').value;if(!/^\d{2}:\d{2}$/.test(t))throw new Error('Upload time must be HH:MM.');const [hh,mm]=t.split(':').map(Number);const totd=hh*60+mm;const ch=xn('clc_chunk',1,65535),to=xn('clc_tmo',1,65535),bo=xn('clc_back',0,65535),rc=xn('clc_retry',0,255);return{tag:this.tag,size:this.size,dataBytes:[...xw(totd),...xw(ch),...xw(to),...xw(bo),rc],summary:`upload ${t} UTC · ${ch} rec · timeout ${to}s · back-off ${bo}min × ${rc}`,details:[`uplink_totd=${xwh(totd)} (${totd} min after 00:00 UTC)`,`uplink_chunk_size=${xwh(ch)}`,`connection_timeout=${xwh(to)}`,`uplink_backoff_period=${xwh(bo)}`,`uplink_retry_count=${xh(rc)}`]};}},
+   form(){return`<div class="frow"><div class="field"><label for="clc_totd">Upload time (UTC)</label><input id="clc_totd" type="time" value="02:00"></div><div class="field"><label for="clc_chunk">Chunk size (records / session)</label><input id="clc_chunk" type="number" min="1" max="65535" value="100"></div></div><div class="frow"><div class="field"><label for="clc_tmo">Connection timeout (s)</label><input id="clc_tmo" type="number" min="1" max="65535" value="180"></div><div class="field"><label for="clc_back">Retry back-off (min)</label><input id="clc_back" type="number" min="0" max="65535" value="30"></div></div><div class="field"><label for="clc_retry">Retry count</label><input id="clc_retry" type="number" min="0" max="255" value="0"></div><p style="font-size:0.75rem;color:var(--warn)">Firmware note: the current ts2 build ignores the retry byte and stores the high byte of the back-off instead (retries = back-off ÷ 256). Below 256 min back-off that is 0 retries; the summary shows the value the device will actually use.</p>`;},
+   build(){const t=document.getElementById('clc_totd').value;if(!/^\d{2}:\d{2}$/.test(t))throw new Error('Upload time must be HH:MM.');const [hh,mm]=t.split(':').map(Number);const totd=hh*60+mm;const ch=xn('clc_chunk',1,65535),to=xn('clc_tmo',1,65535),bo=xn('clc_back',0,65535),rc=xn('clc_retry',0,255);const eff=bo>>8;const rcTxt=rc===eff?`${rc}`:`${eff} (affected FW; requested ${rc})`;return{tag:this.tag,size:this.size,dataBytes:[...xw(totd),...xw(ch),...xw(to),...xw(bo),rc],summary:`upload ${t} UTC · ${ch} rec · timeout ${to}s · back-off ${bo}min × ${rcTxt}`,details:[`uplink_totd=${xwh(totd)} (${totd} min after 00:00 UTC)`,`uplink_chunk_size=${xwh(ch)}`,`connection_timeout=${xwh(to)}`,`uplink_backoff_period=${xwh(bo)}`,`uplink_retry_count=${xh(rc)}`,`effective retries on affected FW = back-off >> 8 = ${eff}`]};}},
   clGet('LTE','cl_gApn','Get LTE APN',0xB1,'Request the configured APN (ASCII).'),
   clGet('LTE','cl_gApiKey','Get LTE API Key',0xB2,'Request the configured API key (ASCII).'),
   clGet('LTE','cl_gLteCon','Get LTE Connection',0xB3,'Request upload time, chunk size, timeout, back-off and retry count (9 bytes).'),
