@@ -2656,6 +2656,8 @@ function clDop(id) {
 function clGet(group, id, name, tag, desc) {
   return {group, id, cat:'Getter', name, tag, size:0, desc, form(){return xeh(this.desc);}, build(){return xnd(this, name);}};
 }
+// u-blox CFG-NAVSPG-DYNMODEL values as defined in ts2 gps_itf.h (1 is not used)
+const CL_DYN = {0:'Portable (default)',2:'Stationary',3:'Pedestrian',4:'Automotive',5:'Sea',6:'Airborne <1g',7:'Airborne <2g',8:'Airborne <4g',9:'Wrist',10:'Bike'};
 const CL_CONST = ['Default (GPS+QZSS+SBAS+Galileo+BeiDou)','GPS (+QZSS+SBAS)','GPS + Galileo','GPS + GLONASS','GPS + BeiDou','GPS + Galileo + BeiDou','GPS + Galileo + GLONASS','GPS + Galileo + GLONASS + BeiDou'];
 const CL_DR = {0:'DR5 SF7',1:'DR4 SF8',2:'DR3 SF9',3:'DR2 SF10',4:'DR1 SF11',5:'DR0 SF12',6:'DR1–3 array',7:'ADR'};
 
@@ -2682,12 +2684,12 @@ const CL = [
    desc:'Acquisition parameters of the GPS receiver. A scan ends as soon as any enabled DOP threshold is met, after the cool-off following the first fix, or when the scan duration elapses. DOP 0 disables that criterion. ↺ answers with 0xD1.',
    form(){return`<div class="frow"><div class="field"><label for="clg_scan">Scan duration (s)</label><input id="clg_scan" type="number" min="1" max="65535" value="120"></div><div class="field"><label for="clg_cool">Cool-off after first fix (s, 0 = off)</label><input id="clg_cool" type="number" min="0" max="65535" value="20"></div></div><div class="frow"><div class="field"><label for="clg_hdop">HDOP ≤ (0 = off)</label><input id="clg_hdop" type="number" min="0" step="0.1" value="0"></div><div class="field"><label for="clg_vdop">VDOP ≤ (0 = off)</label><input id="clg_vdop" type="number" min="0" step="0.1" value="0"></div></div><div class="field"><label for="clg_pdop">PDOP ≤ (0 = off)</label><input id="clg_pdop" type="number" min="0" step="0.1" value="2.5"></div>`;},
    build(){const sc=xn('clg_scan',1,65535),co=xn('clg_cool',0,65535),h=clDop('clg_hdop'),v=clDop('clg_vdop'),p=clDop('clg_pdop');return{tag:this.tag,size:this.size,dataBytes:[...xw(sc),...xw(co),...xw(h),...xw(v),...xw(p)],summary:`scan=${sc}s cooloff=${co}s HDOP≤${h/10||'off'} VDOP≤${v/10||'off'} PDOP≤${p/10||'off'}`,details:[`scan_duration=${xwh(sc)}`,`cooloff_duration=${xwh(co)}`,`hdop=${xwh(h)} (×10)`,`vdop=${xwh(v)} (×10)`,`pdop=${xwh(p)} (×10)`]};}},
-  {group:'Active GNSS',id:'cl_setGpsConst',cat:'Setter',name:'Set GPS Constellation & Power Mode',tag:0xC2,size:2,
-   desc:'Satellite systems used by the u-blox receiver and its power profile. Applied each time the receiver powers on (next scan). ↺ answers with 0xD2.',
-   form(){return`<div class="field"><label for="clc_const">Constellation</label><select id="clc_const">${CL_CONST.map((n,i)=>`<option value="${i}">${i} — ${n}</option>`).join('')}</select></div><div class="field"><label for="clc_pm">Power mode</label><select id="clc_pm"><option value="0">0 — Full power (continuous tracking)</option><option value="1">1 — Low power (PSMCT cyclic tracking)</option></select></div>`;},
-   build(){const c=xn('clc_const',0,7),pm=xn('clc_pm',0,1);return{tag:this.tag,size:this.size,dataBytes:[c,pm],summary:`${CL_CONST[c]} · ${pm?'Low power':'Full power'}`,details:[`constellation=${xh(c)}`,`power_mode=${xh(pm)}`]};}},
+  {group:'Active GNSS',id:'cl_setGpsConst',cat:'Setter',name:'Set GPS Receiver Config (constellation, power, dynamic model, static hold)',tag:0xC2,size:5,
+   desc:'u-blox receiver settings, applied each time the receiver powers on (next scan). Dynamic model = expected motion of the asset (filters jitter/outliers). Static hold = u-blox CFG-MOT: freezes the GNSS position while slower than the speed threshold, until it moves further than the distance threshold — this is the GNSS receiver, not the accelerometer (that is the Motion Detection Plan). Firmware with the 5-byte layout only; older ts2 builds expect 2 bytes and will reject this. ↺ answers with 0xD2.',
+   form(){return`<div class="field"><label for="clc_const">Constellation</label><select id="clc_const">${CL_CONST.map((n,i)=>`<option value="${i}">${i} — ${n}</option>`).join('')}</select></div><div class="field"><label for="clc_pm">Power mode</label><select id="clc_pm"><option value="0">0 — Full power (continuous tracking)</option><option value="1">1 — Low power (PSMCT cyclic tracking)</option></select></div><div class="field"><label for="clc_dyn">Dynamic model</label><select id="clc_dyn">${Object.entries(CL_DYN).map(([v,n])=>`<option value="${v}">${v} — ${n}</option>`).join('')}</select></div><div class="frow"><div class="field"><label for="clc_motspd">Static hold speed (cm/s, 0 = off)</label><input id="clc_motspd" type="number" min="0" max="255" value="0"></div><div class="field"><label for="clc_motdist">Static hold exit distance (m)</label><input id="clc_motdist" type="number" min="0" max="255" value="0"></div></div>`;},
+   build(){const c=xn('clc_const',0,7),pm=xn('clc_pm',0,1),dyn=xn('clc_dyn',0,10),spd=xn('clc_motspd',0,255),dist=xn('clc_motdist',0,255);if(!(dyn in CL_DYN))throw new Error('Dynamic model 1 is not used.');const hold=spd?`static hold < ${spd} cm/s (${(spd*0.036).toFixed(1)} km/h), exit after ${dist} m`:'static hold off';return{tag:this.tag,size:this.size,dataBytes:[c,pm,dyn,spd,dist],summary:`${CL_CONST[c]} · ${pm?'Low power':'Full power'} · ${CL_DYN[dyn]} · ${hold}`,details:[`constellation=${xh(c)}`,`power_mode=${xh(pm)}`,`dyn_model=${xh(dyn)} (${CL_DYN[dyn]})`,`mot_speed_thrs=${xh(spd)} (${spd} cm/s)`,`mot_dist_thrs=${xh(dist)} (${dist} m)`]};}},
   clGet('Active GNSS','cl_gGpsCfg','Get GPS Config',0xD1,'Request scan duration, cool-off and DOP thresholds (10 bytes).'),
-  clGet('Active GNSS','cl_gGpsConst','Get GPS Constellation & Power Mode',0xD2,'Request constellation and power mode (2 bytes).'),
+  clGet('Active GNSS','cl_gGpsConst','Get GPS Receiver Config',0xD2,'Request constellation, power mode, dynamic model and static hold thresholds (5 bytes).'),
   clGet('Active GNSS','cl_gScan','Get Scan Counts',0x4B,'Request the GNSS scan counter (uint16) and WiFi scan counter (uint16).'),
 
   /* ── LTE ── */
@@ -2755,7 +2757,7 @@ const CL_REF = {
   ],
   'Active GNSS': [
     ['0xC1 ↺','0xD1','GPS config','2–10','scan_duration u16 s · cooloff u16 s · hdop · vdop · pdop u16 (DOP×10)','partial write allowed · 0 = criterion off'],
-    ['0xC2 ↺','0xD2','Constellation & power mode','2','constellation u8 · power_mode u8','0–7 (0 = GPS+Gal+BDS) · 0 full / 1 low power'],
+    ['0xC2 ↺','0xD2','GPS receiver config','5','constellation u8 · power_mode u8 · dyn_model u8 · static hold speed u8 cm/s · static hold distance u8 m','0–7 (0 = GPS+Gal+BDS) · 0 full / 1 low power · 0 portable, 2 stationary, 3 pedestrian, 4 automotive, 5 sea, 6–8 airborne, 9 wrist, 10 bike · 0 = static hold off'],
     ['—','0x4B','Scan counts','4','gnss u16 · wifi u16','read only'],
     ['—','port 10','GNSS position uplink','20','status · lat · lon · alt · ts · voltage · ttf · pdop · sats','lat/lon 1e-6°, alt dm'],
   ],
@@ -2878,7 +2880,7 @@ sm$('sm_bs').value='3A1C2004B018006403E803840E10280002'; sm_decode(); sm_upd();
 (function() {
   if (!('serviceWorker' in navigator)) return;
   const swCode = `
-const CACHE = 'truvami-v4';
+const CACHE = 'truvami-v5';
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.add(self.location.href)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
